@@ -1,0 +1,40 @@
+OASISFormat  : 0.4
+BuildTools   : ocamlbuild
+Plugins      : META (0.4), DevFiles (0.4)
+
+Name         : project-euler-lib
+Version      : 0.1
+Synopsis     : An OCaml library for Project Euler.
+Authors      : Glen Mével <glen.mevel@crans.org>
+License      : WTFPL
+Homepage     : https://gitlab.crans.org/mevel/project-euler-lib
+SourceRepository "master"
+  Type       : git
+  Location   : https://gitlab.crans.org/mevel/project-euler-lib.git
+  Branch     : master
+  Browser    : https://gitlab.crans.org/mevel/project-euler-lib.git
+Description:
+  This library gathers things commonly used to solve Project Euler problems < https://projecteuler.net >. It is all about arithmetic.
+
+Library "project-euler-lib"
+  Path            : .
+  Modules         : Common, Arith, ModArith, Primality, Farey
+  InternalModules :
+  BuildDepends    :
+
+Library "project-euler-lib_zarith"
+  FindLibName     : zarith
+  FindLibParent   : project-euler-lib
+  Path            : .
+  Modules         : ZCommon
+  InternalModules :
+  BuildDepends    : zarith
+
+AlphaFeatures: ocamlbuild_more_args
+Document "project-euler-lib"
+  Type            : ocamlbuild (0.4)
+  BuildTools      : ocamldoc
+  Title           : API reference for project-euler-lib
+  XOCamlbuildPath     : .
+  XOCamlbuildExtraArgs: "-docflags '-colorize-code -short-functors -charset utf-8'"
+  XOCamlbuildLibraries: project-euler-lib, project-euler-lib.zarith
