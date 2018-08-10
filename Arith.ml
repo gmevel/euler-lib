@@ -6,24 +6,28 @@ let sign a =
   else               ~-1
 
 let ediv a b =
-  if a >= 0 then
-    (a / b, a mod b)
+  let q = a / b
+  and r = a mod b in
+  if r >= 0 then
+    (q, r)
   else begin
     let s = sign b in
-    ((a / b) - s, (a mod b) + s*b)
+    (q - s, r + s*b)
   end
 
 let equo a b =
-  if a >= 0 then
-    a / b
+  let q = a / b in
+  if a >= 0 || q*b = a then
+    q
   else
-    (a / b) - sign b
+    q - sign b
 
 let erem a b =
-  if a >= 0 then
-    a mod b
+  let r = a mod b in
+  if r >= 0 then
+    r
   else
-    (a mod b) + abs b
+    r + abs b
 
 let rec gcd a b =
   if b = 0 then
@@ -50,7 +54,10 @@ let gcdext a0 b0 =
 
 (* TODO: detect overflows *)
 let lcm a b =
-  a / gcd a b * b
+  if a = 0 || b = 0 then
+    0
+  else
+    a / gcd a b * b
 
 let rec valuation ~factor:d n =
   assert (d <> 0) ;
