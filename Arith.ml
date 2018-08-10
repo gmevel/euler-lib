@@ -60,7 +60,7 @@ let lcm a b =
     a / gcd a b * b
 
 let rec valuation ~factor:d n =
-  assert (d <> 0) ;
+  assert (abs d <> 1) ;
   assert (n <> 0) ;
   if n mod d <> 0 then
     (0, n)
@@ -68,7 +68,6 @@ let rec valuation ~factor:d n =
     let (k, n') = valuation ~factor:d (n / d) in
     (k+1, n')
 
-(* [valuation_of_2 n] returns [(k, m)] such that [n = 2^k × m] and [m] is odd: *)
 let valuation_of_2 n =
   (*assert (n <> 0) ;
   let k = ref 0 in
@@ -87,81 +86,86 @@ let is_square n =
   let r = truncate @@ sqrt @@ float n in
   r*r = n
 
-(******************************************************************************)
-
-(***
- *** coefficients binomiaux
- ***)
-
+(* TODO: detect overflows *)
 let mul_div a b d =
-  assert (1 <= d) ;
+  assert (0 <= d) ;
   assert (0 <= a && 0 <= b) ;
   let (qa, a') = (a / d, a mod d) in
   let (qb, b') = (b / d, b mod d) in
   qa*b + a'*qb + a'*b'/d
 
+(* TODO: detect overflows *)
 let binoms n =
   assert (0 <= n) ;
-  (* utilise la formule: binom(n,p) = binom(n,p−1) × (n−p+1) ∕ p *)
+  (* Uses the formula: binom(n,p) = binom(n,p−1) × (n−p+1) ∕ p *)
   let b = Array.make (n+1) 0 in
   b.(0) <- 1 ;
   b.(n) <- 1 ;
   for k = 1 to n/2 do
-    (* (1) garanti sans overflow si le résultat attendu est < max_int ∕ k: *)
+    (* (1) Overflow‐free as long as the expected result is less than max_int ∕ k
+     *     [ overall, this makes the algorithm overflow‐free as long as the
+     *     central binomial coefficient is less than max_int ∕ (n∕2);
+     *     for 64‐bit OCaml, this is valid for n∕2 ≤ 30 ]: *)
     (*b.(k) <- b.(k-1) * (n-k+1) ∕ k ;*)
-    (* (2) garanti sans overflow si le résultat attendu est < max_int et que
-     * k < sqrt(max_int): *)
+    (* (2) Overflow‐free as long as the expected result is less than max_int,
+     *     and that k < √max_int [ overall, this makes the algorithm
+     *     overflow‐free as long as the result itself is less than max_int,
+     *     because for n large enough we have that n∕2 < √ binom(n, n∕2);
+     *     for 64‐bit OCaml, this is valid for n∕2 ≤ 32 ]: *)
     b.(k) <- mul_div b.(k-1) (n-k+1) k ;
     b.(n-k) <- b.(k)
   done ;
   b
 
+(* TODO: detect overflows *)
 let binom n p =
   assert (0 <= p && p <= n) ;
-  (* utilise la formule: binom(n,p) = binom(n−1,p−1) × n ∕ p *)
+  (* Uses the formula: binom(n,p) = binom(n−1,p−1) × n ∕ p *)
   let p = min p (n - p) in
   let m = n - p in
   let c = ref 1 in
   for k = 1 to p do
-    (* (1) garanti sans overflow si le résultat attendu est < max_int ∕ k: *)
+    (* (1) Overflow‐free as long as the expected result is less than max_int ∕ k
+     *     [ overall, this makes the algorithm overflow‐free as long as the
+     *     result is less than max_int ∕ q, where q = min(p, n−p) ]: *)
     (*c := !c * (m + k) ∕ k*)
-    (* évite davantage d’overflows: *)
+    (* (1b) Avoids a few more overflows: *)
     (*c := !c * m ∕ k + !c ;*)
-    (* (2) garanti sans overflow si le résultat attendu est < max_int et que
-     * k < sqrt(max_int): *)
+    (* (2) Overflow‐free as long as the expected result is less than max_int,
+     *     and that k < √max_int [ overall, this makes the algorithm
+     *     overflow‐free as long as the result itself is less than max_int,
+     *     because for n large enough we have that q < √ binom(n, q) ]: *)
     c := mul_div !c (m+k) k ;
   done ;
   !c
 
-(* [central_binom p] retourne le nombre de combinaisons de [p] éléments parmi
- * [2p]. calcule en temps O(p) et en espace O(1), et ne cause d’overflow que si
- * le résultat attendu est lui-même strictement supérieur à à max_int.
- * pour des entiers signés de 63 bits, c’est correct pour p ⩽ 32. *)
+(* TODO: detect overflows *)
 let central_binom p =
   assert (0 <= p) ;
-  (* utilise la formule: binom(2p,p) = binom(2(p−1),p−1) × 2(2p−1) ∕ p *)
+  (* Uses the formula: binom(2p,p) = binom(2(p−1),p−1) × 2(2p−1) ∕ p *)
   let c = ref 1 in
   for k = 1 to p do
     (*c := !c * 2 * (2*k - 1) ∕ k*)
-    (* évite davantage d’overflows: *)
+    (* (2) Avoids all overflows, except for the result itself [ overall, this
+     *     makes the algorithm overflow‐free as long as the result itself is
+     *     less than max_int; for 64‐bit OCaml, this is valid for p ≤ 32 ] *)
     c := !c * 4  -  !c * 2 / k
   done ;
   !c
 
-(* autre algorithme pour calculer un coefficient binomial: en calculant sa
- * factorisation en nombres premiers, avec le théorème de Kummer:
+(* Another algorithm to compute a binomial coefficient: by computing its prime
+ * factorization, using Kummer’s theorem:
  *     http://www.luschny.de/math/factorial/FastBinomialFunction.html
  *     https://en.wikipedia.org/wiki/Kummer's_theorem
- * complexité: en O(log(n)) ?
- * nombre de nombres premiers inférieurs à n : n ∕ log(n)
- * pour chaque nombre premier p, on fait log_p(n) opérations.
- *)
-
-(* calculer modulo un nombre premier:
+ * Complexity: O(log(n)) ?
+ *     number of primes below n: n ∕ log(n)
+ *     for each prime p, we do log_p(n) operations.
+ *
+ * Compute modulo a prime number:
  *     https://en.wikipedia.org/wiki/Lucas's_theorem
- * calculer modulo 2^N:
+ * Compute modulo 2^N:
  *     https://www.hindawi.com/journals/tswj/2013/751358/
- * calculer modulo n’importe quoi (théorème des restes chinois + généralisation
- * du théorème de Lucas par Andrew Granville):
+ * Compute modulo anything (Chinese remainder theorem + generalization of Lucas’
+ * theorem by Andrew Granville):
  *     https://fishi.devtail.io/weblog/2015/06/25/computing-large-binomial-coefficients-modulo-prime-non-prime/
  *)
