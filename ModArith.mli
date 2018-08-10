@@ -14,7 +14,7 @@ val div : modulo:int -> int -> int -> int
 val pow : modulo:int -> int -> int -> int
 
 module Make : (sig val modulo : int end) -> sig
-  type t = int
+  type t = private int
   val of_int : int -> t
   val to_int : t -> int
   val opp : t -> t
