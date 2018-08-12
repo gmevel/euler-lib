@@ -7,7 +7,7 @@ let rec pow ~mult ~unit b n =
   else
     pow ~mult ~unit:(mult unit b) (mult b b) (n / 2)
 
-let rec memoized_fix (f : ('a -> 'b) -> ('a -> 'b)) : 'a -> 'b =
+let rec memoized_fix f =
   let mem = Hashtbl.create 1 in
   let rec fx n =
     try Hashtbl.find mem n with Not_found ->
