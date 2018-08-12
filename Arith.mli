@@ -128,7 +128,7 @@ val lcm : int -> int -> int
     @raise Division_by_zero when [d] is null. *)
 val valuation : factor:int -> int -> int * int
 
-(** [valuation_of_2] is the same as [valuation ~factor:2]. It may be faster. *)
+(** [valuation_of_2] is equivalent to [valuation ~factor:2], but much faster. *)
 val valuation_of_2 : int -> int * int
 
 (** [is_square n] is true if and only if [n] is the square of an integer. *)

@@ -33,22 +33,27 @@ fun a b ->
 let ( +? ) a b =
   assert (a <> min_int) ;
   assert (b <> min_int) ;
-  if a > 0 && b > 0 then
-    add_nonneg a b
-  else if a < 0 && b < 0 then
-    ~- (add_nonneg ~-a ~-b)
-  else
+  (* If [a] and [b] are of the same sign: *)
+  if a lxor b >= 0 then begin
+    if a >= 0 then
+      add_nonneg a b
+    else
+      ~- (add_nonneg ~-a ~-b)
+  end else
     a + b
 
 let ( -? ) a b =
   assert (a <> min_int) ;
   assert (b <> min_int) ;
-  if a > 0 && b < 0 then
-    add_nonneg a ~-b
-  else if a < 0 && b > 0 then
-    ~- (add_nonneg ~-a b)
-  else
+  (* If [a] and [b] are of the same sign: *)
+  if a lxor b >= 0 then
     a - b
+  else begin
+    if a >= 0 then
+      add_nonneg a ~-b
+    else
+      ~- (add_nonneg ~-a b)
+  end
 
 let mul_nonneg =
   let uint_half_size = uint_size / 2 in
@@ -77,25 +82,18 @@ fun a b ->
 let ( *? ) a b =
   assert (a <> min_int) ;
   assert (b <> min_int) ;
-  if a >= 0 && b >= 0 then
-    mul_nonneg a b
-  else if a <= 0 && b <= 0 then
-    mul_nonneg ~-a ~-b
-  else if a > 0 (* && b < 0 *) then
-    ~- (mul_nonneg a ~-b)
-  else (* a < 0 && b > 0 *)
-    ~- (mul_nonneg ~-a b)
-(* This is made shorter using a bitwise trick, but it may not be faster because
- * of calls to [abs]. TODO: Benchmark it. *)
-(*
-let ( *? ) a b =
-  assert (a <> min_int) ;
-  assert (b <> min_int) ;
-  if a lxor b >= 0 then
-    mul_nonneg (abs a) (abs b)
-  else
-    ~- (mul_nonneg (abs a) (abs b))
-*)
+  (* If [a] and [b] are of the same sign: *)
+  if a lxor b >= 0 then begin
+    if a >= 0 then
+      mul_nonneg a b
+    else
+      mul_nonneg ~-a ~-b
+  end else begin
+    if a >= 0 then
+      ~- (mul_nonneg a ~-b)
+    else
+      ~- (mul_nonneg ~-a b)
+  end
 
 let pow =
   Common.pow ~mult:( *? ) ~unit:1
@@ -157,32 +155,37 @@ let lcm a b =
   else
     a / gcd a b *? b
 
-let rec valuation ~factor:d n =
+let valuation ~factor:d n =
   assert (abs d <> 1) ;
   assert (n <> 0) ;
-  if n mod d <> 0 then
-    (0, n)
-  else
-    let (k, n') = valuation ~factor:d (n / d) in
-    (k+1, n')
+  let k = ref 0 in
+  let m = ref n in
+  while !m mod d = 0 do
+    incr k ;
+    m := !m / d ;
+  done ;
+  (!k, !m)
 
-(*
 let valuation_of_2 n =
   assert (n <> 0) ;
   let k = ref 0 in
   let m = ref n in
-  while !m mod 2 = 0 do
+  while !m land 1 = 0 do
     incr k ;
-    m := !m / 2 ;
+    m := !m asr 1 ;
   done ;
   (!k, !m)
-*)
-(* Made potentially faster with a trick. TODO: Benchmark it. *)
+(* The following implementation is constant‐time. However, benchmarking shows
+ * that it only becomes faster than the implementation above when the valuation
+ * is at least 14, which is very unlikely. With random integers, it is about
+ * twice slower. *)
+(*
 let valuation_of_2 n =
   assert (n <> 0) ;                  (*    n = 0b ???????10000 *)
   let bits = (n lxor (n-1)) lsr 1 in (* bits = 0b 000000001111 *)
   let k = snd@@frexp (float bits) in (* we convert to float and get the exponent *)
-  (k, n lsr k)
+  (k, n asr k)
+*)
 
 let is_square n =
   let r = truncate @@ sqrt @@ float n in

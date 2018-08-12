@@ -21,6 +21,8 @@ Library "project-euler-lib"
   Modules         : Common, Arith, ModArith, Primality, Farey
   InternalModules :
   BuildDepends    :
+  NativeOpt       : -inline=5 -ccopt -Ofast
+  #NativeOpt       : -noassert
 
 Library "project-euler-lib_zarith"
   FindLibName     : zarith
@@ -29,6 +31,8 @@ Library "project-euler-lib_zarith"
   Modules         : ZCommon
   InternalModules :
   BuildDepends    : zarith
+  NativeOpt       : -inline=5 -ccopt -Ofast
+  #NativeOpt       : -noassert
 
 AlphaFeatures: ocamlbuild_more_args
 Document "project-euler-lib"
@@ -38,3 +42,5 @@ Document "project-euler-lib"
   XOCamlbuildPath     : .
   XOCamlbuildExtraArgs: "-docflags '-colorize-code -short-functors -charset utf-8'"
   XOCamlbuildLibraries: project-euler-lib, project-euler-lib.zarith
+
+# TODO: tests
