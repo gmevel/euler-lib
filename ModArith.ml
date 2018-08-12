@@ -121,7 +121,7 @@ let mul ~modulo:m =
 fun a b ->
   assert (0 <= a && a < m) ;
   assert (0 <= b && b < m) ;
-  if (a land b) < sqrt_max_int then
+  if (a lor b) < sqrt_max_int then
     (a * b) mod m
   else begin
     let ra = ref a in
@@ -249,6 +249,7 @@ end
 
 
 (* tests *)
-
+(* FIXME: Use an actual tool for unit tests. *)
 let () =
+  assert (mul ~modulo:max_int (max_int - 7) 2 = (max_int - 14)) ;
   assert (mul ~modulo:(max_int - 1) (max_int - 3) (max_int - 7) = 12)
