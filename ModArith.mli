@@ -1,16 +1,9 @@
 val opp : modulo:int -> int -> int
-
-val add_simple : modulo:int -> int -> int -> int
-val sub_simple : modulo:int -> int -> int -> int
-val mul_simple : modulo:int -> int -> int -> int
-val inv_simple : modulo:int -> int -> int
-val div_simple : modulo:int -> int -> int -> int
-val pow_simple : modulo:int -> int -> int -> int
+val inv : modulo:int -> int -> int
 
 val add : modulo:int -> int -> int -> int
 val sub : modulo:int -> int -> int -> int
 val mul : modulo:int -> int -> int -> int
-val inv : modulo:int -> int -> int
 val div : modulo:int -> int -> int -> int
 val pow : modulo:int -> int -> int -> int
 

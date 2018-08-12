@@ -2,92 +2,13 @@
  * [a] and [b] are under canonical form (that is, between 0 and [m] − 1).
  * They always return values under canonical form.
  *
- * TODO: not sure that [add_simple] and [sub_simple] are actually faster than
- *       [add] and [sub], make a benchmark.
  * TODO: check what happens for [min_int] (since [~-min_int = min_int]).
  * TODO: [pow ~modulo:1 a 0] currently returns 1 instead of 0.
  *
  * *)
 
-let opp ~modulo:m =
-  assert (0 < m) ;
-fun a ->
-  assert (0 <= a && a < m) ;
-  if a = 0 then
-    0
-  else
-    m - a
-
 (* let sqrt_max_int = truncate@@sqrt@@float max_int *)
 let sqrt_max_int = 1 lsl ((Sys.word_size - 2) / 2)
-
-let add_simple ~modulo:m =
-  assert (0 < m && m - 1 <= max_int / 2) ;
-fun a b ->
-  assert (0 <= a && a < m) ;
-  assert (0 <= b && b < m) ;
-  (a + b) mod m
-
-let sub_simple ~modulo:m =
-  assert (0 < m && m - 1 <= max_int / 2) ;
-fun a b ->
-  assert (0 <= a && a < m) ;
-  assert (0 <= b && b < m) ;
-  (a + (m - b)) mod m
-
-let mul_simple ~modulo:m =
-  assert (0 < m && m - 1 <= sqrt_max_int) ;
-fun a b ->
-  assert (0 <= a && a < m) ;
-  assert (0 <= b && b < m) ;
-  (a * b) mod m
-
-(* We compute the modular inverse using an extended Euclidean algorithm. We
- * reimplement the algorithm instead of using [Arith.gcdext] directly because
- * in the latter function Bézout’s coefficients can overflow, whereas we are
- * only interested in their class modulo [m]. *)
-let inv_simple ~modulo:m =
-  let ( ~-: ) = opp ~modulo:m
-  and ( -: )  = sub_simple ~modulo:m
-  and ( *: )  = mul_simple ~modulo:m in
-fun a ->
-  (* Only used to check assertions: *)
-  let a0 = Arith.erem a m in
-  (* The extended Euclidean algorithm: *)
-  let rec gcdext a b u v x y =
-    assert (Arith.erem a m = u*:a0) ;
-    assert (Arith.erem b m = x*:a0) ;
-    if b = 0 then begin
-      if a > 0 then
-        (a, u)
-      else
-        (~-a, ~-:u)
-    end else begin
-      let q = Arith.erem (a / b) m in
-      gcdext b (a mod b) x y (u -: q *: x) (v -: q *: y)
-    end
-  in
-  (* Computing the inverse: *)
-  let (d, u) = gcdext a m 1 0 0 1 in
-  if d <> 1 then
-    raise Division_by_zero
-  else
-    u
-
-let div_simple ~modulo:m =
-  let mul = mul_simple ~modulo:m
-  and inv = inv_simple ~modulo:m in
-fun a b ->
-  mul a (inv b)
-
-let pow_simple ~modulo:m =
-  let pow = Common.pow ~mult:(mul_simple ~modulo:m) ~unit:1
-  and inv = inv_simple ~modulo:m in
-fun a n ->
-  if 0 <= n then
-    pow a n
-  else
-    pow (inv a) ~-n
 
 (* overflow-free modular arithnetic
  *
@@ -105,6 +26,15 @@ fun a b ->
     a + b
   else
     a - m_b
+
+let opp ~modulo:m =
+  assert (0 < m) ;
+fun a ->
+  assert (0 <= a && a < m) ;
+  if a = 0 then
+    0
+  else
+    m - a
 
 let sub ~modulo:m =
   assert (0 < m) ;
@@ -132,10 +62,20 @@ fun a b ->
     end ;
     let res = ref 0 in
     while !rb > 0 do
+      (*
       if !rb mod 2 = 1 then
         res := add ~modulo:m !res !ra ;
       ra := add ~modulo:m !ra !ra ;
       rb := !rb / 2 ;
+      *)
+      (* Inlining this code manually gives considerable speedup: *)
+      let a = !ra in
+      let b = !rb in
+      let m_a = m - a in
+      if b land 1 <> 0 then
+        res := (let r = !res in if r < m_a then r + a else r - m_a) ;
+      ra := (if a < m_a then a + a else a - m_a) ;
+      rb := b lsr 1 ;
     done ;
     !res
   end
@@ -145,32 +85,22 @@ fun a b ->
  * in the latter function Bézout’s coefficients can overflow, whereas we are
  * only interested in their class modulo [m]. *)
 let inv ~modulo:m =
-  let ( ~-: ) = opp ~modulo:m
-  and ( -: )  = sub ~modulo:m
+  let ( -: )  = sub ~modulo:m
   and ( *: )  = mul ~modulo:m in
 fun a ->
-  (* Only used to check assertions: *)
-  let a0 = Arith.erem a m in
-  (* The extended Euclidean algorithm: *)
+  assert (0 <= a && a < m) ;
   let rec gcdext a b u v x y =
-    assert (Arith.erem a m = u*:a0) ;
-    assert (Arith.erem b m = x*:a0) ;
     if b = 0 then begin
-      if a > 0 then
-        (a, u)
+      if a <> 1 then
+        raise Division_by_zero
       else
-        (~-a, ~-:u)
+        v
     end else begin
-      let q = Arith.erem (a / b) m in
+      let q = (a / b) mod m in
       gcdext b (a mod b) x y (u -: q *: x) (v -: q *: y)
     end
   in
-  (* Computing the inverse: *)
-  let (d, u) = gcdext a m 1 0 0 1 in
-  if d <> 1 then
-    raise Division_by_zero
-  else
-    u
+  gcdext m a 1 0 0 1
 
 let div ~modulo:m =
   let mul = mul ~modulo:m
@@ -207,42 +137,18 @@ module Make (M : sig val modulo : int end) = struct
   let opp = opp ~modulo:m
   let ( ~-: ) = opp
 
-  let inv =
-    if m - 1 <= sqrt_max_int then
-      inv_simple ~modulo:m
-    else
-      inv ~modulo:m
+  let inv = inv ~modulo:m
   let ( ~/: ) = inv
 
-  let ( +: ) =
-    if m - 1 <= max_int / 2 then
-      add_simple ~modulo:m
-    else
-      add ~modulo:m
+  let ( +: ) = add ~modulo:m
 
-  let ( -: ) =
-    if m - 1 <= max_int / 2 then
-      sub_simple ~modulo:m
-    else
-      sub ~modulo:m
+  let ( -: ) = sub ~modulo:m
 
-  let ( *: ) =
-    if m - 1 <= sqrt_max_int then
-      mul_simple ~modulo:m
-    else
-      mul ~modulo:m
+  let ( *: ) = mul ~modulo:m
 
-  let ( /: ) =
-    if m - 1 <= sqrt_max_int then
-      div_simple ~modulo:m
-    else
-      div ~modulo:m
+  let ( /: ) = div ~modulo:m
 
-  let pow =
-    if m - 1 <= sqrt_max_int then
-      pow_simple ~modulo:m
-    else
-      pow ~modulo:m
+  let pow = pow ~modulo:m
 
 end
 
@@ -252,4 +158,7 @@ end
 (* FIXME: Use an actual tool for unit tests. *)
 let () =
   assert (mul ~modulo:max_int (max_int - 7) 2 = (max_int - 14)) ;
-  assert (mul ~modulo:(max_int - 1) (max_int - 3) (max_int - 7) = 12)
+  assert (inv ~modulo:max_int (max_int-1) = (max_int-1)) ;
+  assert (mul ~modulo:(max_int - 1) (max_int - 3) (max_int - 7) = 12) ;
+  assert (inv ~modulo:42 37 = 25) ;
+  ()
