@@ -100,14 +100,14 @@ val mul_quo : int -> int -> int -> int
 (** {2 Divisors and multiples } *)
 
 (** [gcd a b] is the {e positive} greatest common divisor of [a] and [b].
-    {b Complexity:} 𝒪(log(min([a],[b]))) integer divisions.
+    {b Complexity:} 𝒪(log(min(|[a]|,|[b]|))) integer divisions.
     @return 0 only when [a] = [b] = 0. *)
 val gcd : int -> int -> int
 
 (** [gcdext a b] is the extended Euclidean algorithm; it returns [(d, u, v)]
     where [d] is the {e positive} greatest common divisor of [a] and [b], and
     [u] and [v] are Bézout’s coefficients, such that [u]×[a] + [v]×[b] = [d].
-    {b Complexity:} 𝒪(log(min([a],[b]))) integer divisions.
+    {b Complexity:} 𝒪(log(min(|[a]|,|[b]|))) integer divisions.
     @return [d] = 0 only when [a] = [b] = 0.
     @raise Overflow when the computation of the Bézout’s coefficients provokes
     an overflow, even if there exists a pair of Bézout coefficients which would
@@ -117,7 +117,7 @@ val gcdext : int -> int -> int * int * int
 
 (** [lcm a b] is the lesser common multiple of [a] and [b]. Its sign is that of
     [a]×[b].
-    {b Complexity:} 𝒪(log(min([a],[b]))) integer divisions.
+    {b Complexity:} 𝒪(log(min(|[a]|,|[b]|))) integer divisions.
     @raise Overflow when the result exceeds the range of overflowing integers. *)
 val lcm : int -> int -> int
 
@@ -133,6 +133,11 @@ val valuation_of_2 : int -> int * int
 
 (** [is_square n] is true if and only if [n] is the square of an integer. *)
 val is_square : int -> bool
+
+(** [jacobi a n] is the Jacobi symbol ([a]|[n]), provided that [n] is odd and
+    positive.
+    {b Complexity:} 𝒪(log(min(|[a]|,[n]))) integer divisions. *)
+val jacobi : int -> int -> int
 
 (******************************************************************************)
 

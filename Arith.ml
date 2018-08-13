@@ -191,6 +191,40 @@ let is_square n =
   let r = truncate @@ sqrt @@ float n in
   r*r = n
 
+let jacobi a n =
+  assert (0 < n) ;
+  assert (n land 1 <> 0) ;
+  let ra = ref (erem a n) in
+  let rn = ref n in
+  let acc = ref 0 in
+  (* We accumulate a sum such that the result will be (−1)^acc, hence it is
+   * enough to compute it modulo 2; recall that in this condition, (lxor) is
+   * addition and (land) is multiplication. *)
+  while !ra <> 0 do
+    let a = !ra
+    and n = !rn in
+(*     assert (0 < a && a < n) ; *)
+(*     assert (n land 1 <> 0) ; *)
+    let (k, a) = valuation_of_2 a in
+    (* a' is (a−1)∕2: *)
+    let a' = a lsr 1 in
+    (* n' is (n−1)∕2: *)
+    let n' = n lsr 1 in
+    (* This is equivalent modulo 2 to n' × (n'+1) ∕ 2: *)
+    let t = (n' lsr 1) lxor n' in
+    (* Computing modulo 2, we add s×k + a'×n' to the sum; the first term
+     * accounts for the factors 2 (because (2|n) = (−1)^t), and the second term
+     * accounts for the law of quadratic reciprocity): *)
+    acc := !acc lxor (t land k) lxor (a' land n') ;
+    (* Now we swap a and n thanks to the law of quadratic reciprocity: *)
+    ra := n mod a ;
+    rn := a
+  done ;
+  if !rn = 1 then
+    1 - ((!acc land 1) lsl 1)
+  else
+    0
+
 let mul_div_exact a b d =
   if d = 0 then
     raise Division_by_zero ;
@@ -270,3 +304,11 @@ let central_binom p =
  * theorem by Andrew Granville):
  *     https://fishi.devtail.io/weblog/2015/06/25/computing-large-binomial-coefficients-modulo-prime-non-prime/
  *)
+
+(* Tests. *)
+let () =
+  assert (jacobi 2 3 = ~-1) ;
+  assert (jacobi 2 9 = 1) ;
+  assert (jacobi 21 39 = 0) ;
+  assert (jacobi 30 59 = ~-1) ;
+  ()
