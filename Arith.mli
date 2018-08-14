@@ -95,6 +95,20 @@ val mul_div_exact : int -> int -> int -> int
     @raise Overflow as described. *)
 val mul_quo : int -> int -> int -> int
 
+(** [log2sup n] is the number of binary digits of [n], provided that [n] is
+    non‐negative. In other words, it is the unique integer [k] such that
+    2{^[k]−1} ≤ [n] < 2{^[k]}.
+    {b Complexity:} 𝒪(log([n])) operations.
+    @return 0 when [n] = 0.
+*)
+val log2sup : int -> int
+
+(** [isqrt n] is the integer square root of [n], provided that [n] is
+    non‐negative. In other words, it is the greatest integer [r] such that
+    [r]² ≤ [n], that is, ⌊√[n]⌋.
+    {b Complexity:} 𝒪(log([n])) integer divisions? *)
+val isqrt : int -> int
+
 (******************************************************************************)
 
 (** {2 Divisors and multiples } *)

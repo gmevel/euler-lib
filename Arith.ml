@@ -122,6 +122,81 @@ let erem a b =
   else
     r + abs b
 
+let log2sup n =
+  assert (0 <= n) ;
+  let n = ref n in
+  let k = ref 0 in
+  while !n > 0 do
+    n := !n lsr 1 ;
+    incr k ;
+  done ;
+  !k
+
+(* The following implementation of the integer square root is guaranteed
+ * correct, but is MUCH slower than a naive floating‐point computation. *)
+(*
+let isqrt n =
+  assert (0 <= n) ;
+  (* The result of computing with floating‐point numbers has been checked for
+   * all integers below 2^30 (which is max_int+1 for 32‐bit OCaml), so this is a
+   * safe shortcut. Anyway, we must rule out n = 0 from the general case, since
+   * it would cause a division by zero.
+   * Note: Contrary to what one might believe, this floating‐point computation
+   * is not correct for all integers below 2^53 (53 bits being the precision of
+   * floating‐point numbers). For example, with n = 7865574647205624 = r²−1
+   * where r = 88688075, it incorrectly gives r (instead of r−1). *)
+  if n <= (1 lsl 30) - 1 then
+    truncate@@sqrt@@float n
+  (* In the general case, we use a variation of the Babylonian method for
+   * integer values.
+   *     https://en.wikipedia.org/wiki/Integer_square_root#Using_only_integer_division
+   * Let r be the integer square root of n, and let x0 be an integer at least
+   * equal to r. Then, the following integer sequence:
+   *     x_{n+1}  =  (x + n÷x) ÷ 2
+   * decreases until it reaches r. From that point:
+   *   — if n+1 is a perfect square, then the sequence cycles between r and r+1;
+   *   — otherwise, the sequence remains steady at r. *)
+  else begin
+    (* For the initial value, we compute a good over‐approximation of the square
+     * root using the number of binary digits of n (practical tests seem to
+     * indicate that, with that choice, the number of iterations of the
+     * Babylonian method is at most 7 for 64‐bit OCaml): *)
+    let rx = ref 0 in
+    let ry = ref (let k = log2sup n in 1 lsl ((k+1)/2)) in
+    while
+      let x = !ry in
+      (* This sum does not overflow because its value is approximately 2×√n, far
+       * less than max_int: *)
+      let y = (x + n/x) lsr 1 in
+      rx := x ;
+      ry := y ;
+      y < x
+    do () done ;
+    (* This test accounts for the case where n+1 is a perfect square (if we knew
+     * that it wasn’t, we could get rid of rx and always return !ry): *)
+    let x = !rx in
+    let y = !ry in
+    if x <= y then
+      x
+    else
+      y
+  end
+*)
+
+(* Extensive tests suggest that, for 64‐bit OCaml, the naive floating‐point
+ * computation always gives either the correct result, or the correct result
+ * plus one, so that the following would be correct. THIS IS NOT PROVEN!
+ * It is much faster, only twice as slow as the floating‐point computation. *)
+let isqrt =
+  let sqrt_max_int = 1 lsl (uint_size / 2) - 1 in
+fun n ->
+  assert (0 <= n) ;
+  let x = truncate@@sqrt@@float n in
+  if x*x <= n && x <= sqrt_max_int then
+    x
+  else
+    x - 1
+
 let rec gcd a b =
   if b = 0 then
     abs a
@@ -188,7 +263,7 @@ let valuation_of_2 n =
 *)
 
 let is_square n =
-  let r = truncate @@ sqrt @@ float n in
+  let r = isqrt n in
   r*r = n
 
 let jacobi a n =
