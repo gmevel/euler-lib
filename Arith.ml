@@ -239,7 +239,7 @@ let isqrt n =
 (* Extensive tests suggest that, for 64‐bit OCaml, the naive floating‐point
  * computation always gives either the correct result, or the correct result
  * plus one, so that the following would be correct. THIS IS NOT PROVEN!
- * It is much faster, only twice as slow as the floating‐point computation. *)
+ * It is much faster, about the speed of the floating‐point sqrt itself. *)
 let isqrt =
   let sqrt_max_int = 1 lsl (uint_size / 2) - 1 in
 fun n ->
