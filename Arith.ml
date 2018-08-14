@@ -122,15 +122,68 @@ let erem a b =
   else
     r + abs b
 
-let log2sup n =
+(* This implementation is only valid for systems where native unsigned integers
+ * are at most 53 bits (including 32‐bit OCaml). See comments below. *)
+let log2sup_53bit n =
   assert (0 <= n) ;
-  let n = ref n in
-  let k = ref 0 in
-  while !n > 0 do
-    n := !n lsr 1 ;
-    incr k ;
-  done ;
-  !k
+  snd@@frexp (float n)
+
+(* This implementation is only valid for systems where native unsigned integers
+ * are at least 53 bits and at most 62 bits (including 64‐bit OCaml). *)
+let log2sup_62bit n =
+  assert (0 <= n) ;
+  (* As long as the integer can be represented exactly as a floating‐point
+   * number (53 bits being the precision of floating‐point numbers), the fastest
+   * solution is by far to convert the integer to a floating‐point number and to
+   * read its exponent. It gives wrong results for larger numbers, because those
+   * may be rounded up (for example it gives 62 instead of 61, for all numbers
+   * between 2^61−128 and 2^61−1). *)
+  if n <= (1 lsl 53) - 1 then
+    snd@@frexp (float n)
+  (* If we know that the number is at least 2^53, we can discard the 54 lowest
+   * bits, compute the result for the remaining bits, and add 54. Here we could
+   * use the floating‐point trick again, but since there are only 8 bits
+   * remaining, it is faster to compute the exponent ourselves. *)
+  else
+(*
+  begin
+    let n = n lsr 54 in
+         if n >= 128 then 62
+    else if n >=  64 then 61
+    else if n >=  32 then 60
+    else if n >=  16 then 59
+    else if n >=   8 then 58
+    else if n >=   4 then 57
+    else if n >=   2 then 56
+    else                  54 lor n
+  end
+*)
+  (* Benchmarking suggests that, for random integers, a dichotomy is faster than
+   * a linear search for finding the highest bit set. This seems odd to me. *)
+  begin
+    let n = n lsr 54 in
+    if n >= 16 then begin
+      if n >= 64 then begin
+        if n >= 128 then 62 else 61
+      end else begin
+        if n >= 32 then 60 else 59
+      end
+    end else begin
+      if n >= 4 then begin
+        if n >= 8 then 58 else 57
+      end else begin
+        if n >= 2 then 56 else 54 lor n
+      end
+    end
+  end
+
+let log2sup =
+  if uint_size <= 53 then
+    log2sup_53bit
+  else if uint_size <= 62 then
+    log2sup_62bit
+  else
+    assert false
 
 (* The following implementation of the integer square root is guaranteed
  * correct, but is MUCH slower than a naive floating‐point computation. *)
