@@ -311,7 +311,12 @@ let valuation_of_2 n =
 let valuation_of_2 n =
   assert (n <> 0) ;                  (*    n = 0b ???????10000 *)
   let bits = (n lxor (n-1)) lsr 1 in (* bits = 0b 000000001111 *)
-  let k = snd@@frexp (float bits) in (* we convert to float and get the exponent *)
+  let k = (* we convert to float and get the exponent *)
+    if bits land (1 lsl 53) = 0 then
+      snd@@frexp (float bits)
+    else
+      54 + (snd@@frexp (float (bits lsr 54)))
+  in
   (k, n asr k)
 *)
 
