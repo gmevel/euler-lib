@@ -98,7 +98,7 @@ let miller_rabin_test_exn ~bases n =
       (* test whether b^{m×2^i} ={n}= −1 for some 1 ≤ i < k : *)
       let x = ref x in
       for _ = 1 to pred k do
-        x := ModArith.pow ~modulo:n !x !x ;
+        x := ModArith.mul ~modulo:n !x !x ;
         (* in the following case, we know that n is composite and we can compute
          * factors of n: gcd(n, b^{m×2^{i−1}} − 1) and gcd(n, b^{m×2^{i−1}} + 1)
          * are non-trivial factors of n: *)
