@@ -1,16 +1,21 @@
 (* the 25 prime numbers under 100: *)
-val primes_under_100 : int list
+val primes_under_100 : int array
+
+(* the 1229 prime numbers under 10 000: *)
+val primes_under_10_000 : int array
 
 (* strong Fermat primality test, aka Miller-Rabin probable primality test:
  *     https://en.wikipedia.org/wiki/Strong_pseudoprime
  *     https://en.wikipedia.org/wiki/Miller%E2%80%93Rabin_primality_test *)
-val miller_rabin_test : bases:(int list) -> int -> bool
+(* val miller_rabin_test : bases:(int list) -> int -> bool *)
 
 (* deterministic primality test for 64-bit integers: *)
 val is_prime : int -> bool
 
 (* Miller-Rabin probabilistic primality test: *)
-val is_probably_prime : ?rounds:int -> int -> bool
+(* val is_probably_prime : ?rounds:int -> int -> bool *)
+
+val factors : ?tries:int -> ?max_fact:int -> int -> (int * int) list
 
 
 

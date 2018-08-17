@@ -87,26 +87,86 @@ fun a b ->
 let inv ~modulo:m =
   let ( -: )  = sub ~modulo:m
   and ( *: )  = mul ~modulo:m in
-fun a ->
-  assert (0 <= a && a < m) ;
   let rec gcdext a b u v x y =
     if b = 0 then begin
       if a <> 1 then
-        raise Division_by_zero
-      else
-        v
+        raise Division_by_zero ;
+      v
     end else begin
       let q = (a / b) mod m in
       gcdext b (a mod b) x y (u -: q *: x) (v -: q *: y)
     end
   in
-  gcdext m a 1 0 0 1
+fun b ->
+  assert (0 <= b && b < m) ;
+  gcdext m b 1 0 0 1
 
 let div ~modulo:m =
   let mul = mul ~modulo:m
   and inv = inv ~modulo:m in
 fun a b ->
   mul a (inv b)
+
+(* Returns an element [x] such that [b]×[x] = [a], if there exists one.
+ * It is unique only when [b] is inversible; in general, it is unique modulo [c]
+ * where [c] = [m] ∕ gcd([m], [b]).
+ * For example, modulo 10, 4×3 = 4×8 = 2, so 2 divided by 4 may be 3 or 8.
+ * This example shows that the division 2 ∕ 4 cannot be simplified to 1 ∕ 2.
+ * @raise Division_by_zero when there no such element. *)
+let div_nonunique ~modulo:m =
+  let ( -: )  = sub ~modulo:m
+  and ( *: )  = mul ~modulo:m in
+fun a b ->
+  assert (0 <= b && b < m) ;
+  assert (0 <= a && a < m) ;
+  let dividend = a in
+  let rec gcdext a b u v x y =
+    if b = 0 then begin
+      if dividend mod a <> 0 then
+        raise Division_by_zero ;
+      (dividend / a) *: v
+    end else begin
+      let q = (a / b) mod m in
+      gcdext b (a mod b) x y (u -: q *: x) (v -: q *: y)
+    end
+  in
+  gcdext m b 1 0 0 1
+
+exception Factor_found of int
+
+(* Like [div ~modulo:m a b], except that it raises Division_by_zero only when
+ * [b] is zero. If [b] is not inversible but not zero, [d] = gcd([m], [b]) gives
+ * a non‐trivial factor of [m]; in that case, this function raises
+ * [Factor_found d]. *)
+(*
+let div_factorize ~modulo:m a b =
+  begin try
+    div ~modulo:m a b
+  with Division_by_zero when b <> 0 ->
+    let d = Arith.gcd m b in
+    raise (Factor_found d)
+  end
+*)
+let div_factorize ~modulo:m =
+  let ( -: )  = sub ~modulo:m
+  and ( *: )  = mul ~modulo:m in
+  let rec gcdext a b u v x y =
+    if b = 0 then begin
+      if a <> 1 then
+        raise (Factor_found a) ;
+      v
+    end else begin
+      let q = (a / b) mod m in
+      gcdext b (a mod b) x y (u -: q *: x) (v -: q *: y)
+    end
+  in
+fun a b ->
+  assert (0 <= a && a < m) ;
+  assert (0 <= b && b < m) ;
+  if b = 0 then
+    raise Division_by_zero
+  else
+    a *: gcdext m b 1 0 0 1
 
 let pow ~modulo:m =
   let pow = Common.pow ~mult:(mul ~modulo:m) ~unit:1
@@ -117,39 +177,47 @@ fun a n ->
   else
     pow (inv a) ~-n
 
+let rand ~modulo:m =
+  assert (0 < m) ;
+fun () ->
+  Arith.rand m
+
 
 
 module Make (M : sig val modulo : int end) = struct
 
-  let m = abs M.modulo
+  let modulo = abs M.modulo
 
   let () =
-    assert (0 < m)
+    assert (0 < modulo)
 
   type t = int
 
   let of_int a =
-    Arith.erem a m
+    Arith.erem a modulo
 
   let to_int a =
     a
 
-  let opp = opp ~modulo:m
+  let opp = opp ~modulo
   let ( ~-: ) = opp
 
-  let inv = inv ~modulo:m
+  let inv = inv ~modulo
   let ( ~/: ) = inv
 
-  let ( +: ) = add ~modulo:m
+  let ( +: ) = add ~modulo
 
-  let ( -: ) = sub ~modulo:m
+  let ( -: ) = sub ~modulo
 
-  let ( *: ) = mul ~modulo:m
+  let ( *: ) = mul ~modulo
 
-  let ( /: ) = div ~modulo:m
+  let ( /: ) = div ~modulo
 
-  let pow = pow ~modulo:m
+  let ( //: ) = div_factorize ~modulo
 
+  let pow = pow ~modulo
+
+  let rand = rand ~modulo
 end
 
 

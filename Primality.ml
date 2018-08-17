@@ -56,34 +56,142 @@
  *)
 
 let primes_under_100 =
-  [  2 ;  3 ;  5 ;  7 ; 11 ; 13 ; 17 ; 19 ; 23 ; 29 ; 31 ; 37 ; 41 ; 43 ; 47 ;
-    53 ; 59 ; 61 ; 67 ; 71 ; 73 ; 79 ; 83 ; 89 ; 97 ]
+  [|  2 ;  3 ;  5 ;  7 ; 11 ; 13 ; 17 ; 19 ; 23 ; 29 ; 31 ; 37 ; 41 ; 43 ; 47 ;
+     53 ; 59 ; 61 ; 67 ; 71 ; 73 ; 79 ; 83 ; 89 ; 97 |]
+
+let primes_under_10_000 =
+  [|
+        2 ;    3 ;    5 ;    7 ;   11 ;   13 ;   17 ;   19 ;   23 ;   29 ;
+       31 ;   37 ;   41 ;   43 ;   47 ;   53 ;   59 ;   61 ;   67 ;   71 ;
+       73 ;   79 ;   83 ;   89 ;   97 ;  101 ;  103 ;  107 ;  109 ;  113 ;
+      127 ;  131 ;  137 ;  139 ;  149 ;  151 ;  157 ;  163 ;  167 ;  173 ;
+      179 ;  181 ;  191 ;  193 ;  197 ;  199 ;  211 ;  223 ;  227 ;  229 ;
+      233 ;  239 ;  241 ;  251 ;  257 ;  263 ;  269 ;  271 ;  277 ;  281 ;
+      283 ;  293 ;  307 ;  311 ;  313 ;  317 ;  331 ;  337 ;  347 ;  349 ;
+      353 ;  359 ;  367 ;  373 ;  379 ;  383 ;  389 ;  397 ;  401 ;  409 ;
+      419 ;  421 ;  431 ;  433 ;  439 ;  443 ;  449 ;  457 ;  461 ;  463 ;
+      467 ;  479 ;  487 ;  491 ;  499 ;  503 ;  509 ;  521 ;  523 ;  541 ;
+      547 ;  557 ;  563 ;  569 ;  571 ;  577 ;  587 ;  593 ;  599 ;  601 ;
+      607 ;  613 ;  617 ;  619 ;  631 ;  641 ;  643 ;  647 ;  653 ;  659 ;
+      661 ;  673 ;  677 ;  683 ;  691 ;  701 ;  709 ;  719 ;  727 ;  733 ;
+      739 ;  743 ;  751 ;  757 ;  761 ;  769 ;  773 ;  787 ;  797 ;  809 ;
+      811 ;  821 ;  823 ;  827 ;  829 ;  839 ;  853 ;  857 ;  859 ;  863 ;
+      877 ;  881 ;  883 ;  887 ;  907 ;  911 ;  919 ;  929 ;  937 ;  941 ;
+      947 ;  953 ;  967 ;  971 ;  977 ;  983 ;  991 ;  997 ; 1009 ; 1013 ;
+     1019 ; 1021 ; 1031 ; 1033 ; 1039 ; 1049 ; 1051 ; 1061 ; 1063 ; 1069 ;
+     1087 ; 1091 ; 1093 ; 1097 ; 1103 ; 1109 ; 1117 ; 1123 ; 1129 ; 1151 ;
+     1153 ; 1163 ; 1171 ; 1181 ; 1187 ; 1193 ; 1201 ; 1213 ; 1217 ; 1223 ;
+     1229 ; 1231 ; 1237 ; 1249 ; 1259 ; 1277 ; 1279 ; 1283 ; 1289 ; 1291 ;
+     1297 ; 1301 ; 1303 ; 1307 ; 1319 ; 1321 ; 1327 ; 1361 ; 1367 ; 1373 ;
+     1381 ; 1399 ; 1409 ; 1423 ; 1427 ; 1429 ; 1433 ; 1439 ; 1447 ; 1451 ;
+     1453 ; 1459 ; 1471 ; 1481 ; 1483 ; 1487 ; 1489 ; 1493 ; 1499 ; 1511 ;
+     1523 ; 1531 ; 1543 ; 1549 ; 1553 ; 1559 ; 1567 ; 1571 ; 1579 ; 1583 ;
+     1597 ; 1601 ; 1607 ; 1609 ; 1613 ; 1619 ; 1621 ; 1627 ; 1637 ; 1657 ;
+     1663 ; 1667 ; 1669 ; 1693 ; 1697 ; 1699 ; 1709 ; 1721 ; 1723 ; 1733 ;
+     1741 ; 1747 ; 1753 ; 1759 ; 1777 ; 1783 ; 1787 ; 1789 ; 1801 ; 1811 ;
+     1823 ; 1831 ; 1847 ; 1861 ; 1867 ; 1871 ; 1873 ; 1877 ; 1879 ; 1889 ;
+     1901 ; 1907 ; 1913 ; 1931 ; 1933 ; 1949 ; 1951 ; 1973 ; 1979 ; 1987 ;
+     1993 ; 1997 ; 1999 ; 2003 ; 2011 ; 2017 ; 2027 ; 2029 ; 2039 ; 2053 ;
+     2063 ; 2069 ; 2081 ; 2083 ; 2087 ; 2089 ; 2099 ; 2111 ; 2113 ; 2129 ;
+     2131 ; 2137 ; 2141 ; 2143 ; 2153 ; 2161 ; 2179 ; 2203 ; 2207 ; 2213 ;
+     2221 ; 2237 ; 2239 ; 2243 ; 2251 ; 2267 ; 2269 ; 2273 ; 2281 ; 2287 ;
+     2293 ; 2297 ; 2309 ; 2311 ; 2333 ; 2339 ; 2341 ; 2347 ; 2351 ; 2357 ;
+     2371 ; 2377 ; 2381 ; 2383 ; 2389 ; 2393 ; 2399 ; 2411 ; 2417 ; 2423 ;
+     2437 ; 2441 ; 2447 ; 2459 ; 2467 ; 2473 ; 2477 ; 2503 ; 2521 ; 2531 ;
+     2539 ; 2543 ; 2549 ; 2551 ; 2557 ; 2579 ; 2591 ; 2593 ; 2609 ; 2617 ;
+     2621 ; 2633 ; 2647 ; 2657 ; 2659 ; 2663 ; 2671 ; 2677 ; 2683 ; 2687 ;
+     2689 ; 2693 ; 2699 ; 2707 ; 2711 ; 2713 ; 2719 ; 2729 ; 2731 ; 2741 ;
+     2749 ; 2753 ; 2767 ; 2777 ; 2789 ; 2791 ; 2797 ; 2801 ; 2803 ; 2819 ;
+     2833 ; 2837 ; 2843 ; 2851 ; 2857 ; 2861 ; 2879 ; 2887 ; 2897 ; 2903 ;
+     2909 ; 2917 ; 2927 ; 2939 ; 2953 ; 2957 ; 2963 ; 2969 ; 2971 ; 2999 ;
+     3001 ; 3011 ; 3019 ; 3023 ; 3037 ; 3041 ; 3049 ; 3061 ; 3067 ; 3079 ;
+     3083 ; 3089 ; 3109 ; 3119 ; 3121 ; 3137 ; 3163 ; 3167 ; 3169 ; 3181 ;
+     3187 ; 3191 ; 3203 ; 3209 ; 3217 ; 3221 ; 3229 ; 3251 ; 3253 ; 3257 ;
+     3259 ; 3271 ; 3299 ; 3301 ; 3307 ; 3313 ; 3319 ; 3323 ; 3329 ; 3331 ;
+     3343 ; 3347 ; 3359 ; 3361 ; 3371 ; 3373 ; 3389 ; 3391 ; 3407 ; 3413 ;
+     3433 ; 3449 ; 3457 ; 3461 ; 3463 ; 3467 ; 3469 ; 3491 ; 3499 ; 3511 ;
+     3517 ; 3527 ; 3529 ; 3533 ; 3539 ; 3541 ; 3547 ; 3557 ; 3559 ; 3571 ;
+     3581 ; 3583 ; 3593 ; 3607 ; 3613 ; 3617 ; 3623 ; 3631 ; 3637 ; 3643 ;
+     3659 ; 3671 ; 3673 ; 3677 ; 3691 ; 3697 ; 3701 ; 3709 ; 3719 ; 3727 ;
+     3733 ; 3739 ; 3761 ; 3767 ; 3769 ; 3779 ; 3793 ; 3797 ; 3803 ; 3821 ;
+     3823 ; 3833 ; 3847 ; 3851 ; 3853 ; 3863 ; 3877 ; 3881 ; 3889 ; 3907 ;
+     3911 ; 3917 ; 3919 ; 3923 ; 3929 ; 3931 ; 3943 ; 3947 ; 3967 ; 3989 ;
+     4001 ; 4003 ; 4007 ; 4013 ; 4019 ; 4021 ; 4027 ; 4049 ; 4051 ; 4057 ;
+     4073 ; 4079 ; 4091 ; 4093 ; 4099 ; 4111 ; 4127 ; 4129 ; 4133 ; 4139 ;
+     4153 ; 4157 ; 4159 ; 4177 ; 4201 ; 4211 ; 4217 ; 4219 ; 4229 ; 4231 ;
+     4241 ; 4243 ; 4253 ; 4259 ; 4261 ; 4271 ; 4273 ; 4283 ; 4289 ; 4297 ;
+     4327 ; 4337 ; 4339 ; 4349 ; 4357 ; 4363 ; 4373 ; 4391 ; 4397 ; 4409 ;
+     4421 ; 4423 ; 4441 ; 4447 ; 4451 ; 4457 ; 4463 ; 4481 ; 4483 ; 4493 ;
+     4507 ; 4513 ; 4517 ; 4519 ; 4523 ; 4547 ; 4549 ; 4561 ; 4567 ; 4583 ;
+     4591 ; 4597 ; 4603 ; 4621 ; 4637 ; 4639 ; 4643 ; 4649 ; 4651 ; 4657 ;
+     4663 ; 4673 ; 4679 ; 4691 ; 4703 ; 4721 ; 4723 ; 4729 ; 4733 ; 4751 ;
+     4759 ; 4783 ; 4787 ; 4789 ; 4793 ; 4799 ; 4801 ; 4813 ; 4817 ; 4831 ;
+     4861 ; 4871 ; 4877 ; 4889 ; 4903 ; 4909 ; 4919 ; 4931 ; 4933 ; 4937 ;
+     4943 ; 4951 ; 4957 ; 4967 ; 4969 ; 4973 ; 4987 ; 4993 ; 4999 ; 5003 ;
+     5009 ; 5011 ; 5021 ; 5023 ; 5039 ; 5051 ; 5059 ; 5077 ; 5081 ; 5087 ;
+     5099 ; 5101 ; 5107 ; 5113 ; 5119 ; 5147 ; 5153 ; 5167 ; 5171 ; 5179 ;
+     5189 ; 5197 ; 5209 ; 5227 ; 5231 ; 5233 ; 5237 ; 5261 ; 5273 ; 5279 ;
+     5281 ; 5297 ; 5303 ; 5309 ; 5323 ; 5333 ; 5347 ; 5351 ; 5381 ; 5387 ;
+     5393 ; 5399 ; 5407 ; 5413 ; 5417 ; 5419 ; 5431 ; 5437 ; 5441 ; 5443 ;
+     5449 ; 5471 ; 5477 ; 5479 ; 5483 ; 5501 ; 5503 ; 5507 ; 5519 ; 5521 ;
+     5527 ; 5531 ; 5557 ; 5563 ; 5569 ; 5573 ; 5581 ; 5591 ; 5623 ; 5639 ;
+     5641 ; 5647 ; 5651 ; 5653 ; 5657 ; 5659 ; 5669 ; 5683 ; 5689 ; 5693 ;
+     5701 ; 5711 ; 5717 ; 5737 ; 5741 ; 5743 ; 5749 ; 5779 ; 5783 ; 5791 ;
+     5801 ; 5807 ; 5813 ; 5821 ; 5827 ; 5839 ; 5843 ; 5849 ; 5851 ; 5857 ;
+     5861 ; 5867 ; 5869 ; 5879 ; 5881 ; 5897 ; 5903 ; 5923 ; 5927 ; 5939 ;
+     5953 ; 5981 ; 5987 ; 6007 ; 6011 ; 6029 ; 6037 ; 6043 ; 6047 ; 6053 ;
+     6067 ; 6073 ; 6079 ; 6089 ; 6091 ; 6101 ; 6113 ; 6121 ; 6131 ; 6133 ;
+     6143 ; 6151 ; 6163 ; 6173 ; 6197 ; 6199 ; 6203 ; 6211 ; 6217 ; 6221 ;
+     6229 ; 6247 ; 6257 ; 6263 ; 6269 ; 6271 ; 6277 ; 6287 ; 6299 ; 6301 ;
+     6311 ; 6317 ; 6323 ; 6329 ; 6337 ; 6343 ; 6353 ; 6359 ; 6361 ; 6367 ;
+     6373 ; 6379 ; 6389 ; 6397 ; 6421 ; 6427 ; 6449 ; 6451 ; 6469 ; 6473 ;
+     6481 ; 6491 ; 6521 ; 6529 ; 6547 ; 6551 ; 6553 ; 6563 ; 6569 ; 6571 ;
+     6577 ; 6581 ; 6599 ; 6607 ; 6619 ; 6637 ; 6653 ; 6659 ; 6661 ; 6673 ;
+     6679 ; 6689 ; 6691 ; 6701 ; 6703 ; 6709 ; 6719 ; 6733 ; 6737 ; 6761 ;
+     6763 ; 6779 ; 6781 ; 6791 ; 6793 ; 6803 ; 6823 ; 6827 ; 6829 ; 6833 ;
+     6841 ; 6857 ; 6863 ; 6869 ; 6871 ; 6883 ; 6899 ; 6907 ; 6911 ; 6917 ;
+     6947 ; 6949 ; 6959 ; 6961 ; 6967 ; 6971 ; 6977 ; 6983 ; 6991 ; 6997 ;
+     7001 ; 7013 ; 7019 ; 7027 ; 7039 ; 7043 ; 7057 ; 7069 ; 7079 ; 7103 ;
+     7109 ; 7121 ; 7127 ; 7129 ; 7151 ; 7159 ; 7177 ; 7187 ; 7193 ; 7207 ;
+     7211 ; 7213 ; 7219 ; 7229 ; 7237 ; 7243 ; 7247 ; 7253 ; 7283 ; 7297 ;
+     7307 ; 7309 ; 7321 ; 7331 ; 7333 ; 7349 ; 7351 ; 7369 ; 7393 ; 7411 ;
+     7417 ; 7433 ; 7451 ; 7457 ; 7459 ; 7477 ; 7481 ; 7487 ; 7489 ; 7499 ;
+     7507 ; 7517 ; 7523 ; 7529 ; 7537 ; 7541 ; 7547 ; 7549 ; 7559 ; 7561 ;
+     7573 ; 7577 ; 7583 ; 7589 ; 7591 ; 7603 ; 7607 ; 7621 ; 7639 ; 7643 ;
+     7649 ; 7669 ; 7673 ; 7681 ; 7687 ; 7691 ; 7699 ; 7703 ; 7717 ; 7723 ;
+     7727 ; 7741 ; 7753 ; 7757 ; 7759 ; 7789 ; 7793 ; 7817 ; 7823 ; 7829 ;
+     7841 ; 7853 ; 7867 ; 7873 ; 7877 ; 7879 ; 7883 ; 7901 ; 7907 ; 7919 ;
+     7927 ; 7933 ; 7937 ; 7949 ; 7951 ; 7963 ; 7993 ; 8009 ; 8011 ; 8017 ;
+     8039 ; 8053 ; 8059 ; 8069 ; 8081 ; 8087 ; 8089 ; 8093 ; 8101 ; 8111 ;
+     8117 ; 8123 ; 8147 ; 8161 ; 8167 ; 8171 ; 8179 ; 8191 ; 8209 ; 8219 ;
+     8221 ; 8231 ; 8233 ; 8237 ; 8243 ; 8263 ; 8269 ; 8273 ; 8287 ; 8291 ;
+     8293 ; 8297 ; 8311 ; 8317 ; 8329 ; 8353 ; 8363 ; 8369 ; 8377 ; 8387 ;
+     8389 ; 8419 ; 8423 ; 8429 ; 8431 ; 8443 ; 8447 ; 8461 ; 8467 ; 8501 ;
+     8513 ; 8521 ; 8527 ; 8537 ; 8539 ; 8543 ; 8563 ; 8573 ; 8581 ; 8597 ;
+     8599 ; 8609 ; 8623 ; 8627 ; 8629 ; 8641 ; 8647 ; 8663 ; 8669 ; 8677 ;
+     8681 ; 8689 ; 8693 ; 8699 ; 8707 ; 8713 ; 8719 ; 8731 ; 8737 ; 8741 ;
+     8747 ; 8753 ; 8761 ; 8779 ; 8783 ; 8803 ; 8807 ; 8819 ; 8821 ; 8831 ;
+     8837 ; 8839 ; 8849 ; 8861 ; 8863 ; 8867 ; 8887 ; 8893 ; 8923 ; 8929 ;
+     8933 ; 8941 ; 8951 ; 8963 ; 8969 ; 8971 ; 8999 ; 9001 ; 9007 ; 9011 ;
+     9013 ; 9029 ; 9041 ; 9043 ; 9049 ; 9059 ; 9067 ; 9091 ; 9103 ; 9109 ;
+     9127 ; 9133 ; 9137 ; 9151 ; 9157 ; 9161 ; 9173 ; 9181 ; 9187 ; 9199 ;
+     9203 ; 9209 ; 9221 ; 9227 ; 9239 ; 9241 ; 9257 ; 9277 ; 9281 ; 9283 ;
+     9293 ; 9311 ; 9319 ; 9323 ; 9337 ; 9341 ; 9343 ; 9349 ; 9371 ; 9377 ;
+     9391 ; 9397 ; 9403 ; 9413 ; 9419 ; 9421 ; 9431 ; 9433 ; 9437 ; 9439 ;
+     9461 ; 9463 ; 9467 ; 9473 ; 9479 ; 9491 ; 9497 ; 9511 ; 9521 ; 9533 ;
+     9539 ; 9547 ; 9551 ; 9587 ; 9601 ; 9613 ; 9619 ; 9623 ; 9629 ; 9631 ;
+     9643 ; 9649 ; 9661 ; 9677 ; 9679 ; 9689 ; 9697 ; 9719 ; 9721 ; 9733 ;
+     9739 ; 9743 ; 9749 ; 9767 ; 9769 ; 9781 ; 9787 ; 9791 ; 9803 ; 9811 ;
+     9817 ; 9829 ; 9833 ; 9839 ; 9851 ; 9857 ; 9859 ; 9871 ; 9883 ; 9887 ;
+     9901 ; 9907 ; 9923 ; 9929 ; 9931 ; 9941 ; 9949 ; 9967 ; 9973 ;
+  |]
 
 exception Composite
 exception Prime
 
-let miller_rabin_test_exn ~bases n =
-  let n = abs n in
-  if n <= 1 then
-    raise Composite ;
-  (* these two tests are subsumed by the trial division below: *)
-  (*if n = 2 then
-    raise Prime ;
-  if n mod 2 = 0 then
-    raise Composite ;*)
-  (* first, a trial division (not necessary, but overall speeds up the primality
-   * test by eliminating many composite numbers): *)
-  primes_under_100 |> List.iter begin fun p ->
-    if n = p then
-      raise Prime ;
-    if n mod p = 0 then
-      raise Composite ;
-  end ;
-  (* every composite number up to 10_200 has at least one prime factor less than
-   * 100: *)
-  if n <= 10_200 then
-    raise Prime ;
-  (* now the general Miller-Rabin test for odd numbers: *)
+let miller_rabin_test ~bases n =
+  assert (3 <= n) ;
+  assert (n land 1 <> 0) ;
   (* write n = m × 2^k + 1 where m is odd: *)
   let (k, m) = Arith.valuation_of_2 (n - 1) in
   (* perform the test for each given base: *)
@@ -113,14 +221,7 @@ let miller_rabin_test_exn ~bases n =
     end
   end
 
-let miller_rabin_test ~bases n =
-  begin match miller_rabin_test_exn ~bases n with
-  | ()                  -> true  (* strong probable prime *)
-  | exception Prime     -> true  (* definitely prime *)
-  | exception Composite -> false (* definitely composite *)
-  end
-
-let is_prime : int -> bool =
+let is_prime_aux =
   assert (Sys.word_size = 64) ;
   (* these small base sets are guaranteed to give allways-correct result for
    * values of the input below the specified bound. the last one works for (at
@@ -146,22 +247,47 @@ let is_prime : int -> bool =
   let bases6 = [ 2 ; 123635709730000 ; 9233062284813009 ; 43835965440333360 ; 761179012939631437 ; 1263739024124850375 ] in
   let bound6 = 585226005592931977 in
   let bases7 = [ 2 ; 325 ; 9375 ; 28178 ; 450775 ; 9780504 ; 1795265022 ] in
-fun n ->
+fun ~first_primes n ->
   let n = abs n in
-  if n < bound1 then
-    miller_rabin_test ~bases:bases1 n
-  else if n < bound2 then
-    miller_rabin_test ~bases:bases2 n
-  else if n < bound3 then
-    miller_rabin_test ~bases:bases3 n
-  else if n < bound4 then
-    miller_rabin_test ~bases:bases4 n
-  else if n < bound5 then
-    miller_rabin_test ~bases:bases5 n
-  else if n < bound6 then
-    miller_rabin_test ~bases:bases6 n
-  else
-    miller_rabin_test ~bases:bases7 n
+  begin match
+    if n <= 1 then
+      raise Composite ;
+    (* these two tests are subsumed by the trial division below: *)
+    (*if n = 2 then
+      raise Prime ;
+    if n land 1 = 0 then
+      raise Composite ;*)
+    (* first, a trial division (not necessary, but overall speeds up the
+     * primality test by eliminating many composite numbers): *)
+    let r = Arith.isqrt n in
+    first_primes |> Array.iter begin fun p ->
+      if r < p then
+        raise Prime ;
+      if n mod p = 0 then
+        raise Composite ;
+    end ;
+    (* now the general Miller-Rabin test for odd numbers: *)
+    if n < bound1 then
+      miller_rabin_test ~bases:bases1 n
+    else if n < bound2 then
+      miller_rabin_test ~bases:bases2 n
+    else if n < bound3 then
+      miller_rabin_test ~bases:bases3 n
+    else if n < bound4 then
+      miller_rabin_test ~bases:bases4 n
+    else if n < bound5 then
+      miller_rabin_test ~bases:bases5 n
+    else if n < bound6 then
+      miller_rabin_test ~bases:bases6 n
+    else
+      miller_rabin_test ~bases:bases7 n
+  with
+  | ()                  -> true  (* strong probable prime *)
+  | exception Prime     -> true  (* definitely prime *)
+  | exception Composite -> false (* definitely composite *)
+  end
+
+let is_prime = is_prime_aux ~first_primes:primes_under_100
 
 (* TODO: tweak the default number of rounds; see this paragraph from Wikipedia:
  *
@@ -184,14 +310,205 @@ fun n ->
  *
  *
  * *)
+(*
 let is_probably_prime ?(rounds=10) n =
-  (* we pick random bases between 2 and n−2, inclusive: *)
-  let n' = max 1 (abs n - 3) in
-  let bases = List.init rounds (fun _ -> 2 + Random.int n') in
-  miller_rabin_test ~bases n
+  let n = abs n in
+  if n <= 3 then
+    n >= 2
+  else if n land 1 = 0 then
+    false
+  else begin
+    (* we pick random bases between 2 and n−2, inclusive: *)
+    let bases = List.init rounds (fun _ -> Arith.rand ~min:2 ~max:(n-1)) in
+    begin match miller_rabin_test ~bases n with
+    | ()                  -> true  (* strong probable prime *)
+    | exception Prime     -> true  (* definitely prime *)
+    | exception Composite -> false (* definitely composite *)
+    end
+  end
+*)
+
+(******************************************************************************)
+
+(* This functor implements elliptic curves whose equation is under the form
+ *     y² = x³ + ax + b
+ * over the ring ℤ∕nℤ (here, n = [M.modulo]). *)
+module Make_EllipticCurve (M : sig val modulo : int end) = struct
+
+  (* The ring ℤ∕nℤ. *)
+  module M = ModArith.Make (M)
+
+  (* The type of a point of an elliptic curve. *)
+  type point =
+    | Infinity
+    | Finite of M.t * M.t
+
+  (* The addition of two points of an elliptic curve.
+   * Note: The coefficient [b] is only useful for checking assertions.
+   * It cannot raise [Division_by_zero]. It can raise [Factor_found d] where [d]
+   * is a non‐trivial factor of [M.modulo]. *)
+  let add ~a ~b p q =
+    begin match p, q with
+    | Infinity, r  |  r, Infinity ->
+        r
+    | Finite (xp, yp), Finite (xq, yq) ->
+        assert M.(yp*:yp = xp*:xp*:xp +: a*:xp +: b) ;
+        assert M.(yq*:yq = xq*:xq*:xq +: a*:xq +: b) ;
+        if xp <> xq then begin
+          assert (xp <> xq) ;
+          (* Note: xq−xp is never zero, hence either the division succeeds or a
+           * non‐trivial factor is found. *)
+          let s = M.((yq -: yp) //: (xq -: xp)) in
+          let t = M.(yp -: s*:xp) in
+          let xr = M.(s*:s -: xp -: xq) in
+          let yr = M.(~-: s*:xr -: t) in
+          Finite (xr, yr)
+        end else if yp = yq && (yp:>int) <> 0 then begin
+          assert (xp = xq && yp = yq && (yp:>int) <> 0) ;
+          (* Note: 2yp is never zero (provided that M.modulo is odd), hence
+           * either the division succeeds or a non‐trivial factor is found. *)
+          let xp2 = M.(xp*:xp) in
+          let s = M.((xp2 +: xp2 +: xp2 +: a) //: (yp +: yp)) in
+          let t = M.(yp -: s*:xp) in
+          let xr = M.(s*:s -: xp -: xq) in
+          let yr = M.(~-: s*:xr -: t) in
+          Finite (xr, yr)
+        end else begin
+          assert (xp = xq && yp = M.opp yq) ;
+          Infinity
+        end
+    end
+
+  (* The multiplication of a point [n] times.
+   * Note: The coefficient [b] is only useful for checking assertions. *)
+  let mul ~a ~b p n =
+    Common.pow ~mult:(add ~a ~b) ~unit:Infinity p n
+
+  (* Draw a random elliptic curve of equation y² = x³ + ax + b, plus a point
+   * (x₀, y₀) on it. The curve is not degenerate (its discriminant is not zero).
+   * Note: The coefficient [b] is only useful for checking assertions. *)
+  let rec rand () =
+    let a = M.rand () in
+    let x0 = M.rand () in
+    let y0 = M.rand () in
+    let b = M.(y0*:y0 -: x0*:x0*:x0 -: a*:x0) in
+    if (M.(of_int 4*:a*:a*:a +: of_int 27*:b*:b) :> int) = 0 then
+      rand ()
+    else
+      (a, b, x0, y0)
+
+end (* module Make_EllipticCurve *)
+
+let default_number_of_tries = max_int
+let default_max_fact = 160
+
+(* Lenstra’s elliptic‐curve algorithm for finding a factor of [n].
+ * @return a non‐trivial factor of [n].
+ * @raise Not_found when no factor was found within the allowed time bounds
+ * (which is highly unlikely with the default parameters).
+ * @param tries The number of elliptic curves to try before resigning.
+ * @max_fact The “small” exponents tried by the algorithm are the factorial
+ * numbers up to the factorial of [max_fact]. *)
+let lenstra_find_factor ~tries ~max_fact n =
+  let module EC = Make_EllipticCurve (struct let modulo = n end) in
+  begin try
+    for _ = 1 to tries do
+      let (a, b, x0, y0) = EC.rand () in
+      let p = ref (EC.Finite (x0, y0)) in
+      (* Note: Short‐circuiting the case when [p] becomes ∞ is not useful,
+       * because it is very rare. *)
+      for k = 2 to max_fact do
+        p := EC.mul ~a ~b !p k
+      done
+    done ;
+    raise Not_found
+  with ModArith.Factor_found d ->
+    d
+  end
+
+(* Given the prime factorization of two integers, returns the factorization of
+ * their product. *)
+let rec merge_factors li1 li2 =
+  begin match li1, li2 with
+  | [], li  |  li, [] ->
+      li
+  | (p1, k1) :: li1', (p2, k2) :: li2' ->
+      if p1 = p2 then
+        (p1, k1+k2) :: merge_factors li1' li2'
+      else if p1 < p2 then
+        (p1, k1) :: merge_factors li1' li2
+      else
+        (p2, k2) :: merge_factors li1 li2'
+  end
+
+(* The primality test we use for factorization.
+ * We first perform a trial division with all prime numbers below 10 000, so
+ * subsequent primality tests need not perform trial division again. Moreover,
+ * we know that all numbers whose square root is less than 10 007 (the smallest
+ * prime number that we did not ruled out) are prime. *)
+let lenstra_is_prime n =
+  n < 1_014_049 (* = 10_007² *)
+  || is_prime_aux ~first_primes:[||] n
+
+(* Factorization algorithm based on Lenstra’s factor searching. *)
+let rec lenstra_factors ~tries ~max_fact n =
+  assert (1 < n) ;
+  if lenstra_is_prime n then
+    [ (n, 1) ]
+  else begin
+    begin match lenstra_find_factor ~tries ~max_fact n with
+    | d ->
+        assert (n mod d = 0 && d <> 1 && d <> n) ;
+        merge_factors
+          (lenstra_factors ~tries ~max_fact d)
+          (lenstra_factors ~tries ~max_fact (n/d))
+        (* Note: Very often, d is prime, but not always (for example,
+         * n = 3577522661351062530 often yields a non‐prime factor). *)
+    | exception Not_found ->
+        [ (~-n, 1) ]
+    end
+  end
+
+(* Factorization.
+ * @return a list [\[ (p1, k1) ; … ; (pℓ, kℓ) \]] such that
+ * [n] = [p1]{^[k1]} × … × [pℓ]{^[kl]}
+ * and [p1] < … < [pℓ] are prime.
+ * It may contain non‐prime factors [d], if their factorization failed within
+ * the allowed time; this is signaled by negating their value, as in [(-d, 1)].
+ * This is highly unlikely with default parameters. *)
+let factors ?(tries=default_number_of_tries) ?(max_fact=default_max_fact) n =
+  (* (1) Trial division. *)
+  let factored = ref [] in
+  let n = ref n in
+  let r = ref (Arith.isqrt !n) in
+  begin try
+    primes_under_10_000 |> Array.iter begin fun p ->
+      if !r < p then
+        raise Not_found ;
+      let (k, n') = Arith.valuation ~factor:p !n in
+      if k <> 0 then begin
+        factored := (p, k) :: !factored ;
+        n := n' ;
+        r := Arith.isqrt n' ;
+      end
+    end
+  with Not_found ->
+    if !n <> 1 then begin
+      factored := (!n, 1) :: !factored ;
+      n := 1 ;
+    end
+  end ;
+  let n = !n in
+  (* (2) Factorization using Lenstra algorithm. *)
+  if n = 1 then
+    List.rev !factored
+  else
+    List.rev_append !factored (lenstra_factors ~tries ~max_fact n)
 
 
 
+
+(******************************************************************************)
 
 (* TODO: From this point, the code has not been checked for overflows. *)
 

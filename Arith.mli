@@ -174,3 +174,17 @@ val binom : int -> int -> int
     @raise Overflow when the result exceeds the range of overflowing integers.
     For 64‐bit OCaml, this happens for [p] ≥ 33. *)
 val central_binom : int -> int
+
+(******************************************************************************)
+
+(** {2 Randomness } *)
+
+(** [rand ~min ~max] draws a random integer with the uniform distribution
+    between [min] (inclusive) and [max] (exclusive). [max] must be (strictly)
+    greater than [min]. [min] defaults to 0. *)
+val rand : ?min:int -> max:int -> int
+
+(** [rand_signed ~max] draws a random integer with the uniform distribution,
+    with an absolute value (strictly) less than [max]. [max] must be a positive
+    integer. *)
+val rand_signed : max:int -> int
