@@ -242,6 +242,14 @@ let factorizing_sieve nmax ~do_factors =
   * See https://miller-rabin.appspot.com/
   *)
 
+(* FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
+ *
+ *  [is_prime] gives a WRONG answer for n = 6855593 !
+ *  (the only error found for n ≤ 402 027 267)
+ *
+ * FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
+ *)
+
 exception Composite
 exception Prime
 
@@ -676,10 +684,6 @@ let primes nmax =
   let n = 6*kmax + 7 in
   if n <= nmax then test n ;
   primes
-
-(* WRONG: 6855593
- * only error found below 402_027_267
- * *)
 
 (* Read a precomputed list of prime numbers from a file.
  * Now that an efficient primality test is available, this method is obsolete.
