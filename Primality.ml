@@ -645,51 +645,26 @@ let overestimate_number_of_primes nmax =
 
 (******************************************************************************)
 
-(*
-let prime_array nmax =
-  assert (0 <= nmax) ;
-  let primes = Array.make (overestimate_number_of_primes nmax + 1) 0 in
-  primes.(0) <- 2 ;
-  let i = ref 0 in
-  for k = 1 to nmax / 2 do
-    let n = (k lsl 1) - 1 in
-    if is_prime n then begin
-      incr i ;
-      primes.(!i) <- n ;
-    end
-  done ;
-  primes
-*)
-
 (* TODO: Optimize this, for example using a sieve for small values. *)
 let primes nmax =
-  assert (5 <= nmax) ;
+  assert (2 <= nmax) ;
   let primes = Array.make (overestimate_number_of_primes nmax) 0 in
   primes.(0) <- 2 ;
-  primes.(1) <- 3 ;
-  primes.(2) <- 5 ;
-  let i = ref 2 in
-  let test n =
+  let i = ref 0 in
+  for k = 1 to (nmax - 1) / 2 do
+    let n = (k lsl 1) lor 1 in
     if is_prime n then begin
       incr i ;
       primes.(!i) <- n ;
     end
-  in
-  let kmax = (nmax - 5) / 6 in
-  for k = 1 to kmax do
-    let m = 6*k in
-    test (m + 1) ;
-    test (m + 5) ;
   done ;
-  let n = 6*kmax + 7 in
-  if n <= nmax then test n ;
   primes
 
 (* Read a precomputed list of prime numbers from a file.
  * Now that an efficient primality test is available, this method is obsolete.
  *)
 (*
-let prime_list_from_file nmax =
+let primes_from_file nmax =
   let li = ref [] in
   let file = Scanf.Scanning.open_in "data/primes-under-1_000_000.data" in
   let again = ref true in
