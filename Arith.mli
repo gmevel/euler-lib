@@ -1,6 +1,5 @@
-(** Arithmetic on overflowing integers. *)
+(** Arithmetic on overflowing integers.
 
-(**
     All operations defined here act on overflowing integers. An overflowing
     integer is any native integer (type [int]) except [min_int]. Otherwise said,
     they are the integers whose absolute value is at most
@@ -29,6 +28,8 @@
     As much as possible, time and space complexities are indicated. If absent,
     constant time or constant space is implied.
  *)
+
+(******************************************************************************)
 
 (** Raised when the result of an operation exceeds the range of overflowing
     integers. *)

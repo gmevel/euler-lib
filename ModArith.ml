@@ -165,7 +165,7 @@ let rand ~modulo:m =
 fun () ->
   Arith.rand m
 
-
+(******************************************************************************)
 
 module Make (M : sig val modulo : int end) = struct
 

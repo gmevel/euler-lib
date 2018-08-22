@@ -1,59 +1,6 @@
-(***** PRIMALITY TESTS ****
- *
- * AKS:
- *     https://en.wikipedia.org/wiki/AKS_primality_test
- * deterministic
- * polynomial but slow: Õ((log n)⁶) (reducible to Õ((log n)³) assuming Agrawal’s conjecture, which is suspected to be false)
- * no certificates
- * not used in practice
- *
- * ECPP (Elliptic Curve Primality Proving):
- *     https://en.wikipedia.org/wiki/Elliptic_curve_primality
- * deterministic
- * not proven polynomial, but very fast, much faster than AKS, Miller, …
- * can produce certificates
- *
- * Solovay-Strassen:
- *     https://en.wikipedia.org/wiki/Solovay%E2%80%93Strassen_primality_test
- * probabilistic (probability of a false positive, knowing the number is composite: less than 2^{−rounds} (much less in practice))
- * polynomial: O((log n)³)
- * similar to Miller-Rabin, superseded by it (historical importance for RSA)
- * not used anymore
- *
- * Miller-Rabin:
- *     https://en.wikipedia.org/wiki/Miller%E2%80%93Rabin_primality_test
- * probabilistic (probability of a false positive, knowing the number is composite: less than 4^{−rounds} (much less in practice))
- * polynomial: O((log n)³), improved to Õ((log n)²) with FFT-based multiplications
- *
- * Miller’s variant of Miller-Rabin:
- *     https://en.wikipedia.org/wiki/Miller%E2%80%93Rabin_primality_test
- * deterministic
- * correction depends on the generalized Riemann hypothesis
- * polynomial: Õ((log n)⁴) using FFT
- * not used in practice
- *
- * Baillie-PSW:
- *     https://en.wikipedia.org/wiki/Baillie%E2%80%93PSW_primality_test
- * probabilistic
- * deterministic for 64-bit integers (more efficient than the test with the seven bases show below?)
- *
- * simpler tests, often used before a general algorithm to speed up the test:
- * — trial division: try small factors (say, prime numbers less than 100)
- * — Fermat test: check that a^{n−1} ={n}= 1 for some random 2 ≤ a ≤ n−2
- *)
+type factorization = (int * int) list
 
-(* TODO:
- * implement ECPP and Miller
- *)
-
-(* TODO:
-  * use hashing to reduce the number of bases necessary
-  * see https://miller-rabin.appspot.com/
-  *)
-
-(* TODO:
- * use zarith
- *)
+(******************************************************************************)
 
 let primes_under_100 =
   [|  2 ;  3 ;  5 ;  7 ; 11 ; 13 ; 17 ; 19 ; 23 ; 29 ; 31 ; 37 ; 41 ; 43 ; 47 ;
@@ -186,30 +133,149 @@ let primes_under_10_000 =
      9901 ; 9907 ; 9923 ; 9929 ; 9931 ; 9941 ; 9949 ; 9967 ; 9973 ;
   |]
 
+(******************************************************************************)
+
+(* TODO: Use a better sieve, such as the sieve of Atkin, or wheel factorization;
+ * support segmented sieve.
+ *     https://en.wikipedia.org/wiki/Generating_primes
+ *     https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes
+ *     https://en.wikipedia.org/wiki/Wheel_factorization
+ *     https://en.wikipedia.org/wiki/Sieve_of_Atkin
+ *     https://github.com/kimwalisch/primesieve
+ *)
+
+(* Large sieves are a waste of time and memory, so we forbid them. *)
+let max_sieve = 1 lsl 20
+
+let prime_sieve nmax ~do_prime =
+  assert (0 <= nmax) ;
+  assert (nmax < max_sieve) ;
+  do_prime 2 ;
+  let s = Array.init (succ nmax) (fun i -> i land 1 <> 0) in
+  s.(2) <- true ;
+  let i = ref 1 in
+  while !i <= nmax - 2 do
+    i := !i + 2 ;
+    if s.(!i) then begin
+      do_prime !i ;
+      let j = ref !i in
+      while !j <= nmax - !i do
+        j := !j + !i ;
+        s.(!j) <- false
+      done
+    end
+  done;
+  s
+
+let factorizing_sieve nmax ~do_factors =
+  assert (0 <= nmax) ;
+  assert (nmax < max_sieve) ;
+  let factors = Array.make (succ nmax) []
+  and remaining_to_factor = Array.init (succ nmax) (fun n -> n) in
+  for n = 2 to nmax do
+    if remaining_to_factor.(n) <> 1 then begin
+      for k = 1 to nmax / n do
+        let m = k * n in
+        (* TODO: Using another loop, all divisibility tests can be avoided. *)
+        let (r', count) = Arith.valuation ~factor:n remaining_to_factor.(m) in
+        remaining_to_factor.(m) <- r' ;
+        factors.(m) <- (n, count) :: factors.(m) ;
+      done
+    end ;
+    factors.(n) <- List.rev factors.(n) ;
+    do_factors factors.(n)
+  done ;
+  factors
+
+(******************************************************************************)
+
+(***** A QUICK REVIEW OF PRIMALITY TESTS ****
+ *
+ * AKS:
+ *     https://en.wikipedia.org/wiki/AKS_primality_test
+ * deterministic
+ * polynomial but slow: Õ((log n)⁶) (reducible to Õ((log n)³) assuming Agrawal’s conjecture, which is suspected to be false)
+ * no certificates
+ * not used in practice
+ *
+ * ECPP (Elliptic Curve Primality Proving):
+ *     https://en.wikipedia.org/wiki/Elliptic_curve_primality
+ * deterministic
+ * not proven polynomial, but very fast, much faster than AKS, Miller, …
+ * can produce certificates
+ *
+ * Solovay‐Strassen:
+ *     https://en.wikipedia.org/wiki/Solovay%E2%80%93Strassen_primality_test
+ * probabilistic (probability of a false positive, knowing the number is composite: less than 2^{−rounds} (much less in practice))
+ * polynomial: O((log n)³)
+ * similar to Miller‐Rabin, superseded by it (historical importance for RSA)
+ * not used anymore
+ *
+ * Miller‐Rabin:
+ *     https://en.wikipedia.org/wiki/Miller%E2%80%93Rabin_primality_test
+ * probabilistic (probability of a false positive, knowing the number is composite: less than 4^{−rounds} (much less in practice))
+ * polynomial: O((log n)³), improved to Õ((log n)²) with FFT‐based multiplications
+ *
+ * Miller’s variant of Miller‐Rabin:
+ *     https://en.wikipedia.org/wiki/Miller%E2%80%93Rabin_primality_test
+ * deterministic
+ * correction depends on the generalized Riemann hypothesis
+ * polynomial: Õ((log n)⁴) using FFT
+ * not used in practice
+ *
+ * Baillie‐PSW:
+ *     https://en.wikipedia.org/wiki/Baillie%E2%80%93PSW_primality_test
+ * probabilistic
+ * deterministic for 64‐bit integers (more efficient than the test with the seven bases show below?)
+ *
+ * simpler tests, often used before a general algorithm to speed up the test:
+ * — trial divisions: try small factors (say, prime numbers less than 100)
+ * — Fermat test: check that a^{n−1} ={n}= 1 for some random 2 ≤ a ≤ n−2
+ *)
+
+(* TODO:
+ * Implement ECPP, Miller, Baillie‐PSW.
+ *)
+
+(* TODO:
+  * Use hashing to reduce the number of bases necessary.
+  * See https://miller-rabin.appspot.com/
+  *)
+
 exception Composite
 exception Prime
 
+(* Miller‐Rabin probable primality test (aka strong Fermat primality test):
+ * [miller_rabin_test n] says whether [n] is strongly probably prime or not.
+ * [n] must be odd and greater than 2.
+ * {b Complexity:} 𝒪(k×log([n])³) where k is the number of bases.
+ * @param bases The set of bases to try.
+ * @return if [n] is strongly probably prime with respect to [bases]. If [n] is
+ * in fact composite, the probability of a false positive is (much) less than
+ * 4{^−k} where k is the number of bases.
+ * @raise Prime if [n] is found to be definitely prime.
+ * @raise Composite if [n] is found to be definitely composite. *)
 let miller_rabin_test ~bases n =
   assert (3 <= n) ;
   assert (n land 1 <> 0) ;
-  (* write n = m × 2^k + 1 where m is odd: *)
+  (* Write n = m × 2^k + 1 where m is odd. *)
   let (k, m) = Arith.valuation_of_2 (n - 1) in
-  (* perform the test for each given base: *)
+  (* Perform the test for each given base. *)
   bases |> List.iter begin fun b ->
     let b = b mod n in
     let x = ModArith.pow ~modulo:n b m in
     let exception Strong_probable_prime in
     begin try
-      (* test whether b^m ={n}= ±1 : *)
+      (* Test whether b^m ={n}= ±1. *)
       if x = 1 || x = n-1 then
         raise Strong_probable_prime ;
-      (* test whether b^{m×2^i} ={n}= −1 for some 1 ≤ i < k : *)
+      (* Test whether b^{m×2^i} ={n}= −1 for some 1 ≤ i < k. *)
       let x = ref x in
       for _ = 1 to pred k do
         x := ModArith.mul ~modulo:n !x !x ;
-        (* in the following case, we know that n is composite and we can compute
+        (* In the following case, we know that n is composite and we can compute
          * factors of n: gcd(n, b^{m×2^{i−1}} − 1) and gcd(n, b^{m×2^{i−1}} + 1)
-         * are non-trivial factors of n: *)
+         * are non‐trivial factors of n. *)
         (*if !x = 1 then
           raise Composite ;*)
         if !x = n-1 then
@@ -221,13 +287,65 @@ let miller_rabin_test ~bases n =
     end
   end
 
+(* Miller‐Rabin probabilistic primality test.
+ * [is_probably_prime ~rounds:k n] is true when [n] is a strong probable prime
+ * with respect to [k] randomly chosen bases. If [n] is in fact composite, the
+ * probability of a false positive is (much) less than 4{^−[k]}. Thus, 10 is
+ * reasonable value of [k].
+ * {b Complexity:} 𝒪(k×log([n])³) where k is the number of bases.
+ *)
+(* TODO: tweak the default number of rounds; see this paragraph from Wikipedia:
+ *
+ *     In addition, for large values of n, on average the probability that a
+ *     composite number is declared probably prime is significantly smaller than
+ *     4−k. Damgård, Landrock and Pomerance[7] compute some explicit bounds and
+ *     provide a method to make a reasonable selection for k for a desired error
+ *     bound. Such bounds can, for example, be used to generate probable primes;
+ *     however, they should not be used to verify primes with unknown origin,
+ *     since in cryptographic applications an adversary might try to send you a
+ *     pseudoprime in a place where a prime number is required. In such cases,
+ *     only the error bound of 4−k can be relied upon.
+ *
+ *     However, though this may be a sound probabilistic argument using Bayes'
+ *     theorem, later refinements by Ronald J. Burthe, Jr., proved the
+ *     conjecture in the introduction of the paper [8] that the upper bound of
+ *     4−k is valid for all k > 1. Burthe improved the estimates for 25 <= k <=
+ *     50 to satisfy the conjecture. The exact values for 2 <= k <= 24 were
+ *     evaluated numerically using a result of Monier's.
+ *)
+(*
+let is_probably_prime ?(rounds=10) n =
+  assert (0 <= rounds) ;
+  let n = abs n in
+  if n <= 3 then
+    n = 2 || n = 3
+  else if n land 1 = 0 then
+    false
+  else begin
+    (* we pick random bases between 2 and n−2, inclusive: *)
+    let bases = List.init rounds (fun _ -> Arith.rand ~min:2 ~max:(n-1)) in
+    begin match miller_rabin_test ~bases n with
+    | ()                  -> true  (* strong probable prime *)
+    | exception Prime     -> true  (* definitely prime *)
+    | exception Composite -> false (* definitely composite *)
+    end
+  end
+*)
+
+(* Deterministic primality test for 64‐bit numbers.
+ * [is_prime_aux ~first_primes n] is true if and only if [n] is a prime number.
+ * @param first_primes The set of prime factors to rule out with trial
+ * divisions, before resorting to the Rabin‐Miller test. It must at least
+ * contain 2, or [n] must be odd. *)
 let is_prime_aux =
+  (* If we are in 32‐bit OCaml, some of the constants below exceed the capacity
+   * of integers. *)
   assert (Sys.word_size = 64) ;
-  (* these small base sets are guaranteed to give allways-correct result for
+  (* These small base sets are guaranteed to give allways‐correct result for
    * values of the input below the specified bound. the last one works for (at
-   * least) all 64-bit integers. they are found here:
+   * least) all 64‐bit integers. they are found here:
    *     https://miller-rabin.appspot.com/
-   * commented are sets whose some base does not fit in 62-bit integers. *)
+   * Commented are sets whose some base does not fit in 63‐bit integers. *)
   (*let bases1 = [ 9345883071009581737 ] in
   let bound1 = 341531 in*)
   let bases1 = [ 126401071349994536 ] in
@@ -252,13 +370,14 @@ fun ~first_primes n ->
   begin match
     if n <= 1 then
       raise Composite ;
-    (* these two tests are subsumed by the trial division below: *)
+    (* These two tests are subsumed by the trial divisions below, as long as
+     * [first_primes] contain 2. *)
     (*if n = 2 then
       raise Prime ;
     if n land 1 = 0 then
       raise Composite ;*)
-    (* first, a trial division (not necessary, but overall speeds up the
-     * primality test by eliminating many composite numbers): *)
+    (* First, trial divisions (not necessary, but overall speeds up the
+     * primality test by eliminating many composite numbers). *)
     let r = Arith.isqrt n in
     first_primes |> Array.iter begin fun p ->
       if r < p then
@@ -266,7 +385,8 @@ fun ~first_primes n ->
       if n mod p = 0 then
         raise Composite ;
     end ;
-    (* now the general Miller-Rabin test for odd numbers: *)
+    assert (n land 1 <> 0) ;
+    (* Now the general Miller‐Rabin test for odd numbers. *)
     if n < bound1 then
       miller_rabin_test ~bases:bases1 n
     else if n < bound2 then
@@ -287,48 +407,15 @@ fun ~first_primes n ->
   | exception Composite -> false (* definitely composite *)
   end
 
+(* The end‐user primality test uses trial divisions with all prime numbers below
+ * 100. *)
 let is_prime = is_prime_aux ~first_primes:primes_under_100
 
-(* TODO: tweak the default number of rounds; see this paragraph from Wikipedia:
- *
- * In addition, for large values of n, on average the probability that a
- * composite number is declared probably prime is significantly smaller than
- * 4−k. Damgård, Landrock and Pomerance[7] compute some explicit bounds and
- * provide a method to make a reasonable selection for k for a desired error
- * bound. Such bounds can, for example, be used to generate probable primes;
- * however, they should not be used to verify primes with unknown origin, since
- * in cryptographic applications an adversary might try to send you a
- * pseudoprime in a place where a prime number is required. In such cases, only
- * the error bound of 4−k can be relied upon.
- *
- * However, though this may be a sound probabilistic argument using Bayes'
- * theorem, later refinements by Ronald J. Burthe, Jr., proved the conjecture in
- * the introduction of the paper [8] that the upper bound of 4−k is valid for all
- * k > 1. Burthe improved the estimates for 25 <= k <= 50 to satisfy the
- * conjecture. The exact values for 2 <= k <= 24 were evaluated numerically using
- * a result of Monier's. 
- *
- *
- * *)
-(*
-let is_probably_prime ?(rounds=10) n =
-  let n = abs n in
-  if n <= 3 then
-    n >= 2
-  else if n land 1 = 0 then
-    false
-  else begin
-    (* we pick random bases between 2 and n−2, inclusive: *)
-    let bases = List.init rounds (fun _ -> Arith.rand ~min:2 ~max:(n-1)) in
-    begin match miller_rabin_test ~bases n with
-    | ()                  -> true  (* strong probable prime *)
-    | exception Prime     -> true  (* definitely prime *)
-    | exception Composite -> false (* definitely composite *)
-    end
-  end
-*)
-
 (******************************************************************************)
+
+(* TODO: Use twisted Edwards curves instead of Weierstrass curves?
+ *     https://en.wikipedia.org/wiki/Lenstra_elliptic-curve_factorization#Twisted_Edwards_curves
+ *)
 
 (* This functor implements elliptic curves whose equation is under the form
  *     y² = x³ + ax + b
@@ -344,9 +431,9 @@ module Make_EllipticCurve (M : sig val modulo : int end) = struct
     | Finite of M.t * M.t
 
   (* The addition of two points of an elliptic curve.
-   * Note: The coefficient [b] is only useful for checking assertions.
    * It cannot raise [Division_by_zero]. It can raise [Factor_found d] where [d]
-   * is a non‐trivial factor of [M.modulo]. *)
+   * is a non‐trivial factor of [M.modulo].
+   * Note: The coefficient [b] is only useful for checking assertions. *)
   let add ~a ~b p q =
     begin match p, q with
     | Infinity, r  |  r, Infinity ->
@@ -407,8 +494,8 @@ let default_max_fact = 160
  * @raise Not_found when no factor was found within the allowed time bounds
  * (which is highly unlikely with the default parameters).
  * @param tries The number of elliptic curves to try before resigning.
- * @max_fact The “small” exponents tried by the algorithm are the factorial
- * numbers up to the factorial of [max_fact]. *)
+ * @param max_fact The “small exponents” tried by the algorithm are the
+ * factorial numbers up to the factorial of [max_fact]. *)
 let lenstra_find_factor ~tries ~max_fact n =
   let module EC = Make_EllipticCurve (struct let modulo = n end) in
   begin try
@@ -442,10 +529,10 @@ let rec merge_factors li1 li2 =
   end
 
 (* The primality test we use for factorization.
- * We first perform a trial division with all prime numbers below 10 000, so
- * subsequent primality tests need not perform trial division again. Moreover,
- * we know that all numbers whose square root is less than 10 007 (the smallest
- * prime number that we did not ruled out) are prime. *)
+ * Our factorization process first perform a trial divisions with all numbers
+ * below 10 000, so subsequent primality tests need not perform trial divisions
+ * again. Moreover, we know that all numbers whose square root is less than
+ * 10 007 (the smallest prime number that we did not ruled out) are prime. *)
 let lenstra_is_prime n =
   n < 1_014_049 (* = 10_007² *)
   || is_prime_aux ~first_primes:[||] n
@@ -469,15 +556,8 @@ let rec lenstra_factors ~tries ~max_fact n =
     end
   end
 
-(* Factorization.
- * @return a list [\[ (p1, k1) ; … ; (pℓ, kℓ) \]] such that
- * [n] = [p1]{^[k1]} × … × [pℓ]{^[kl]}
- * and [p1] < … < [pℓ] are prime.
- * It may contain non‐prime factors [d], if their factorization failed within
- * the allowed time; this is signaled by negating their value, as in [(-d, 1)].
- * This is highly unlikely with default parameters. *)
 let factors ?(tries=default_number_of_tries) ?(max_fact=default_max_fact) n =
-  (* (1) Trial division. *)
+  (* (1) Trial divisions. *)
   let factored = ref [] in
   let n = ref n in
   let r = ref (Arith.isqrt !n) in
@@ -505,22 +585,13 @@ let factors ?(tries=default_number_of_tries) ?(max_fact=default_max_fact) n =
   else
     List.rev_append !factored (lenstra_factors ~tries ~max_fact n)
 
-
-
-
 (******************************************************************************)
 
-(* TODO: From this point, the code has not been checked for overflows. *)
-
-(* le nombre π(x) de nombres premiers inférieurs à x est équivalent à x ∕ ln(x).
- * il est aussi équivalent au logarithme intégral li(x), qui donne une
- * estimation beaucoup plus précise. *)
-
 let li ?(precision=0.0) =
-  (* constante d’Euler–Mascheroni *)
+  (* Euler–Mascheroni’s constant. *)
   let gamma = 0.57721_56649_01532_86061 in
 fun x ->
-  (* calcul avec un développement en série: *)
+  (* Computing with a series development. *)
 (*
   assert (x <> 1.0) ;
   let log_x = log x in
@@ -534,7 +605,7 @@ fun x ->
   do incr n done ;
   !s
 *)
-  (* calcul avec une série qui converge un peu plus vite, due à Ramanujan: *)
+  (* Computing with a series (by Ramanujan) which converges slightly faster. *)
   assert (x > 1.0) ;
   let log_x = log x in
   let s = ref (gamma +. log log_x) in
@@ -548,74 +619,78 @@ fun x ->
   do incr n done ;
   !s
 
-(* borne supérieure sur le nombre de nombres premiers inférieurs à [nmax] *)
+(* Over‐estimating with x ∕ ln(x). *)
+(*
 let overestimate_number_of_primes nmax =
   let x = float nmax in
   let y =
     if nmax >= 60_184 then x /. (log x -. 1.1)  (* [Pierre Dusart, 2010] *)
-    else if nmax >= 1_606 then x /. (log x -. 1.5) (* valable dès n >= 5 *)
+    else if nmax >= 1_606 then x /. (log x -. 1.5) (* valid as soon as n >= 5 *)
     else if nmax >= 2 then 1.25506 *. x /. log x
     else 0.0
   in truncate y
-
-(* meilleure borne supérieure sur le nombre de nombres premiers inférieurs à [nmax] *)
+*)
+(* Using the logarithmic integral function gives a much tighter upper bound. *)
 let overestimate_number_of_primes nmax =
+  assert (1 < nmax) ;
   truncate (li (float nmax))
 
-(*** calcul des nombres premiers avec un crible ***)
+(******************************************************************************)
 
-let primes_sieve nmax =
-  let sieve = Array.init nmax (fun i -> i mod 2 <> 0) in
-  sieve.(2) <- true ;
-  let i = ref 1 in
-  while i := !i+2; !i < nmax do
-    if sieve.(!i) then
-      let j = ref !i in
-      while j := !j+ !i; !j < nmax do
-        sieve.(!j) <- false
-      done
-  done;
-  sieve
-let primes_list nmax =
-  let sieve = primes_sieve nmax in
-  let rec aux i =
-    if i >= nmax then []
-    else if sieve.(i) then i :: aux (i+2)
-    else                        aux (i+2)
-  in
-  2 :: aux 3
-
-(*** calcul des nombres premiers par tests successifs ***)
-
-let primes_array nmax =
-  let primes = Array.make (overestimate_number_of_primes nmax) 0 in
-  let rec is_prime ?(i = 0) n =
-    let p = primes.(i) in
-    if p = 0 || p * p > n then
-      true
-    else if n mod p = 0 then
-      false
-    else
-      is_prime ~i:(succ i) n
-  in
+(*
+let prime_array nmax =
+  assert (0 <= nmax) ;
+  let primes = Array.make (overestimate_number_of_primes nmax + 1) 0 in
   primes.(0) <- 2 ;
-  let count_primes = ref 1 in
-  for n = 3 to nmax do
+  let i = ref 0 in
+  for k = 1 to nmax / 2 do
+    let n = (k lsl 1) - 1 in
     if is_prime n then begin
-      primes.(!count_primes) <- n ;
-      incr count_primes
+      incr i ;
+      primes.(!i) <- n ;
     end
   done ;
   primes
+*)
 
-(*** nombres premiers précalculés ***)
+(* TODO: Optimize this, for example using a sieve for small values. *)
+let primes nmax =
+  assert (5 <= nmax) ;
+  let primes = Array.make (overestimate_number_of_primes nmax) 0 in
+  primes.(0) <- 2 ;
+  primes.(1) <- 3 ;
+  primes.(2) <- 5 ;
+  let i = ref 2 in
+  let test n =
+    if is_prime n then begin
+      incr i ;
+      primes.(!i) <- n ;
+    end
+  in
+  let kmax = (nmax - 5) / 6 in
+  for k = 1 to kmax do
+    let m = 6*k in
+    test (m + 1) ;
+    test (m + 5) ;
+  done ;
+  let n = 6*kmax + 7 in
+  if n <= nmax then test n ;
+  primes
 
-let primes_list_from_file nmax =
+(* WRONG: 6855593
+ * only error found below 402_027_267
+ * *)
+
+(* Read a precomputed list of prime numbers from a file.
+ * Now that an efficient primality test is available, this method is obsolete.
+ *)
+(*
+let prime_list_from_file nmax =
   let li = ref [] in
   let file = Scanf.Scanning.open_in "data/primes-under-1_000_000.data" in
   let again = ref true in
   while !again do
-    (* "%_1[\r]@\n" is a format trick that matches \n, \r\n and end-of-file. *)
+    (* "%_1[\r]@\n" is a format trick that matches \n, \r\n and end‐of‐file. *)
     Scanf.bscanf file "%u%_1[\r]@\n" @@fun p ->
     if p <= nmax then
       li := p :: !li ;
@@ -623,34 +698,4 @@ let primes_list_from_file nmax =
   done ;
   Scanf.Scanning.close_in file ;
   List.rev !li
-
-(*** crible généralisé (factorisation, calcul du nombre de diviseurs…) ***)
-
-type sieve_cell =
-  {
-    mutable remaining_to_factor : int ;
-    mutable factors : (int * int) list ;
-    mutable nb_divisors : int ;
-  }
-
-let sieve nmax =
-  let s = Array.init (succ nmax) (fun n -> {
-      remaining_to_factor = n ;
-      factors = [] ;
-      nb_divisors = 1 ;
-    }) in
-  for n = 2 to nmax do
-    if s.(n).remaining_to_factor <> 1 then begin
-      for k = 1 to nmax / n do
-        let cell = s.(k*n) in
-        let count = ref 0 in
-        while cell.remaining_to_factor mod n = 0 do
-          cell.remaining_to_factor <- cell.remaining_to_factor / n ;
-          incr count
-        done ;
-        cell.factors <- (n, !count) :: cell.factors ;
-        cell.nb_divisors <- cell.nb_divisors * (!count + 1) ;
-      done
-    end
-  done ;
-  s
+*)

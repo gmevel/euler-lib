@@ -1,6 +1,5 @@
-(** Modular arithmetic. *)
+(** Modular arithmetic.
 
-(**
     This module defines modular arithmetic operations, that is, operations on
     elements of the ring ℤ∕mℤ where m is a positive integer, called the modulus.
     All operations take m as a named parameter [~modulo]. Elements of ℤ∕mℤ are
@@ -77,6 +76,10 @@ val pow : modulo:int -> int -> int -> int
     uniform distribution. *)
 val rand : modulo:int -> unit -> int
 
+(******************************************************************************)
+
+(** {2 Functorial interface} *)
+
 (** The functor application [Make (M)] defines modular arithmetic operations
     with a fixed, non‐zero modulus [M.modulo]. Because the modulus needs not be
     repeated for each individual operation, meaningful unary and binary
@@ -89,7 +92,7 @@ module Make : (sig val modulo : int end) -> sig
   (** The (positive) modulus m. *)
   val modulo : int
 
-  (** The type of elements of the ring ℤ∕mℤ. *)
+  (** The type of an element of the ring ℤ∕mℤ. *)
   type t = private int
 
   val of_int : int -> t
