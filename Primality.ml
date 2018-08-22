@@ -2,6 +2,56 @@ type factorization = (int * int) list
 
 (******************************************************************************)
 
+let li ?(precision=0.0) =
+  (* Euler–Mascheroni’s constant. *)
+  let gamma = 0.57721_56649_01532_86061 in
+fun x ->
+  (* Computing with a series development. *)
+(*
+  assert (x <> 1.0) ;
+  let log_x = log x in
+  let s = ref (gamma +. log (abs_float log_x)) in
+  let term = ref 1.0 in
+  let n = ref 1 in while
+    term := !term *. log_x /. float !n ;
+    s := !s +. !term /. float !n ;
+    if not @@ (abs_float !term > precision) then Printf.printf "{%u}\n" !n ;
+    abs_float !term > precision
+  do incr n done ;
+  !s
+*)
+  (* Computing with a series (by Ramanujan) which converges slightly faster. *)
+  assert (x > 1.0) ;
+  let log_x = log x in
+  let s = ref (gamma +. log log_x) in
+  let term = ref (~-. 2.0 *. sqrt x) in
+  let sum_of_inverses = ref 0.0 in
+  let n = ref 1 in while
+    if !n mod 2 = 1 then sum_of_inverses := !sum_of_inverses +. 1. /. float !n ;
+    term := !term *. log_x *. ~-. 0.5 /. float !n ;
+    s := !s +. !term *. !sum_of_inverses ;
+    abs_float !term > precision
+  do incr n done ;
+  !s
+
+(* Over‐estimating with x ∕ ln(x). *)
+(*
+let overestimate_number_of_primes nmax =
+  let x = float nmax in
+  let y =
+    if nmax >= 60_184 then x /. (log x -. 1.1)  (* [Pierre Dusart, 2010] *)
+    else if nmax >= 1_606 then x /. (log x -. 1.5) (* valid as soon as n >= 5 *)
+    else if nmax >= 2 then 1.25506 *. x /. log x
+    else 0.0
+  in truncate y
+*)
+(* Using the logarithmic integral function gives a much tighter upper bound. *)
+let overestimate_number_of_primes nmax =
+  assert (1 < nmax) ;
+  truncate (li (float nmax))
+
+(******************************************************************************)
+
 let primes_under_100 =
   [|  2 ;  3 ;  5 ;  7 ; 11 ; 13 ; 17 ; 19 ; 23 ; 29 ; 31 ; 37 ; 41 ; 43 ; 47 ;
      53 ; 59 ; 61 ; 67 ; 71 ; 73 ; 79 ; 83 ; 89 ; 97 |]
@@ -148,7 +198,7 @@ let primes_under_10_000 =
 let max_sieve = 1 lsl 20
 
 let prime_sieve nmax ~do_prime =
-  assert (0 <= nmax) ;
+  assert (2 <= nmax) ;
   assert (nmax < max_sieve) ;
   do_prime 2 ;
   let s = Array.init (succ nmax) (fun i -> i land 1 <> 0) in
@@ -421,6 +471,43 @@ let is_prime = is_prime_aux ~first_primes:primes_under_100
 
 (******************************************************************************)
 
+(* TODO: Optimize this, for example using a sieve for small values. *)
+let primes nmax =
+  assert (2 <= nmax) ;
+  let primes = Array.make (overestimate_number_of_primes nmax) 0 in
+  primes.(0) <- 2 ;
+  let i = ref 0 in
+  for k = 1 to (nmax - 1) / 2 do
+    let n = (k lsl 1) lor 1 in
+    if is_prime n then begin
+      incr i ;
+      primes.(!i) <- n ;
+    end
+  done ;
+  primes
+
+(* Read a precomputed list of prime numbers from a file.
+ * Now that an efficient primality test is available, this method is obsolete.
+ *)
+(*
+let primes_from_file nmax =
+  assert (0 <= nmax && nmax <= 1_000_000) ;
+  let li = ref [] in
+  let file = Scanf.Scanning.open_in "data/primes-under-1_000_000.data" in
+  let again = ref true in
+  while !again do
+    (* "%_1[\r]@\n" is a format trick that matches \n, \r\n and end‐of‐file. *)
+    Scanf.bscanf file "%u%_1[\r]@\n" @@fun p ->
+    if p <= nmax then
+      li := p :: !li ;
+    again := (p < nmax)
+  done ;
+  Scanf.Scanning.close_in file ;
+  List.rev !li
+*)
+
+(******************************************************************************)
+
 (* TODO: Use twisted Edwards curves instead of Weierstrass curves?
  *     https://en.wikipedia.org/wiki/Lenstra_elliptic-curve_factorization#Twisted_Edwards_curves
  *)
@@ -565,6 +652,7 @@ let rec lenstra_factors ~tries ~max_fact n =
   end
 
 let factors ?(tries=default_number_of_tries) ?(max_fact=default_max_fact) n =
+  assert (0 < n) ;
   (* (1) Trial divisions. *)
   let factored = ref [] in
   let n = ref n in
@@ -595,86 +683,110 @@ let factors ?(tries=default_number_of_tries) ?(max_fact=default_max_fact) n =
 
 (******************************************************************************)
 
-let li ?(precision=0.0) =
-  (* Euler–Mascheroni’s constant. *)
-  let gamma = 0.57721_56649_01532_86061 in
-fun x ->
-  (* Computing with a series development. *)
-(*
-  assert (x <> 1.0) ;
-  let log_x = log x in
-  let s = ref (gamma +. log (abs_float log_x)) in
-  let term = ref 1.0 in
-  let n = ref 1 in while
-    term := !term *. log_x /. float !n ;
-    s := !s +. !term /. float !n ;
-    if not @@ (abs_float !term > precision) then Printf.printf "{%u}\n" !n ;
-    abs_float !term > precision
-  do incr n done ;
-  !s
-*)
-  (* Computing with a series (by Ramanujan) which converges slightly faster. *)
-  assert (x > 1.0) ;
-  let log_x = log x in
-  let s = ref (gamma +. log log_x) in
-  let term = ref (~-. 2.0 *. sqrt x) in
-  let sum_of_inverses = ref 0.0 in
-  let n = ref 1 in while
-    if !n mod 2 = 1 then sum_of_inverses := !sum_of_inverses +. 1. /. float !n ;
-    term := !term *. log_x *. ~-. 0.5 /. float !n ;
-    s := !s +. !term *. !sum_of_inverses ;
-    abs_float !term > precision
-  do incr n done ;
-  !s
+let make_optional_factorization (f : factors:factorization -> int -> 'a) :
+  ?factors:factorization -> int -> 'a =
+  fun ?factors:opt_factors n ->
+    assert (0 < n) ;
+    let factors =
+      begin match opt_factors with
+      | None         -> factors n
+      | Some factors -> factors
+      end
+    in
+    f ~factors n
 
-(* Over‐estimating with x ∕ ln(x). *)
-(*
-let overestimate_number_of_primes nmax =
-  let x = float nmax in
-  let y =
-    if nmax >= 60_184 then x /. (log x -. 1.1)  (* [Pierre Dusart, 2010] *)
-    else if nmax >= 1_606 then x /. (log x -. 1.5) (* valid as soon as n >= 5 *)
-    else if nmax >= 2 then 1.25506 *. x /. log x
-    else 0.0
-  in truncate y
-*)
-(* Using the logarithmic integral function gives a much tighter upper bound. *)
-let overestimate_number_of_primes nmax =
-  assert (1 < nmax) ;
-  truncate (li (float nmax))
+let rec eulerphi ~factors n =
+  begin match factors with
+  | []                 -> n
+  | (p, _) :: factors' -> eulerphi ~factors:factors' (n / p * (p-1))
+  end
 
-(******************************************************************************)
+let eulerphi = make_optional_factorization eulerphi
 
-(* TODO: Optimize this, for example using a sieve for small values. *)
-let primes nmax =
-  assert (2 <= nmax) ;
-  let primes = Array.make (overestimate_number_of_primes nmax) 0 in
-  primes.(0) <- 2 ;
-  let i = ref 0 in
-  for k = 1 to (nmax - 1) / 2 do
-    let n = (k lsl 1) lor 1 in
-    if is_prime n then begin
-      incr i ;
-      primes.(!i) <- n ;
-    end
-  done ;
-  primes
-
-(* Read a precomputed list of prime numbers from a file.
- * Now that an efficient primality test is available, this method is obsolete.
- *)
-(*
-let primes_from_file nmax =
-  let li = ref [] in
-  let file = Scanf.Scanning.open_in "data/primes-under-1_000_000.data" in
-  let again = ref true in
-  while !again do
-    (* "%_1[\r]@\n" is a format trick that matches \n, \r\n and end‐of‐file. *)
-    Scanf.bscanf file "%u%_1[\r]@\n" @@fun p ->
-    if p <= nmax then
-      li := p :: !li ;
-    again := (p < nmax)
+let eulerphi_from_file nmax =
+  assert (0 <= nmax && nmax <= 1_000_000) ;
+  let phi = Array.make (nmax+1) 0 in
+  let file = Scanf.Scanning.open_in "data/eulerphi-under-1_000_000.data" in
+  for i' = 1 to nmax do
+    (* "%_1[\r]@\n" is a format trick that matches \n, \r\n and end-of-file. *)
+    Scanf.bscanf file "φ(%u) = %u%_1[\r]@\n" @@fun i phi_i ->
+    assert (i = i') ;
+    phi.(i) <- phi_i
   done ;
   Scanf.Scanning.close_in file ;
-  List.rev !li
-*)
+  phi
+
+let rec number_of_divisors ~factors _ =
+  begin match factors with
+  | []                 -> 1
+  | (_, k) :: factors' -> (k+1) * number_of_divisors ~factors:factors' 1
+  end
+
+let number_of_divisors = make_optional_factorization number_of_divisors
+
+let divisors ~factors _ =
+  let divisors = ref [] in
+  let rec aux factors d =
+    begin match factors with
+    | [] ->
+        divisors := d :: !divisors
+    | (p, k) :: factors' ->
+        let d = ref d in
+        for _ = 0 to k do
+          aux factors' !d ;
+          d := !d * p ;
+        done
+    end
+  in
+  aux factors 1 ;
+  List.sort (-) !divisors
+
+let divisors = make_optional_factorization divisors
+
+type incremental_divisor = {
+  divisor : int ;
+  remaining_factors : factorization ;
+}
+
+module H =
+  CCHeap.Make (struct
+    type t = incremental_divisor
+    let leq = (<=)
+  end)
+
+let gen_divisor_pairs ~factors n =
+  let r = Arith.isqrt n in
+  let h = ref @@ H.add H.empty { divisor = 1 ; remaining_factors = factors } in
+  let rec augment_divisor_with_factors d factors =
+    begin match factors with
+    | [] ->
+        ()
+    | (p, k) :: factors' ->
+        let d' = d * p in
+        if d' <= r then begin
+          let remaining_factors =
+            if k = 1 then factors' else (p, k-1) :: factors' in
+          h := H.add !h { divisor = d' ; remaining_factors } ;
+          augment_divisor_with_factors d factors'
+        end
+    end
+  in
+  let rec gen () =
+    begin match H.take !h with
+    | None ->
+        Seq.Nil
+    | Some (h', x) ->
+        h := h' ;
+        if x.divisor = r then begin
+          assert (x.divisor * x.divisor = n) ;
+          Seq.Cons ((x.divisor, x.divisor), Seq.empty)
+        end else begin
+          assert (x.divisor < r) ;
+          augment_divisor_with_factors x.divisor x.remaining_factors ;
+          Seq.Cons ((x.divisor, n / x.divisor), gen)
+        end
+    end
+  in
+  gen
+
+let gen_divisor_pairs = make_optional_factorization gen_divisor_pairs

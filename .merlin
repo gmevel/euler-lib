@@ -1,3 +1,5 @@
 S .
 B _build
+PKG seq
+PKG containers
 PKG zarith

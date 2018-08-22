@@ -20,7 +20,7 @@ Library "project-euler-lib"
   Path            : .
   Modules         : Common, Arith, ModArith, Primality, Farey
   InternalModules :
-  BuildDepends    :
+  BuildDepends    : seq, containers
   NativeOpt       : -inline=5 -ccopt -Ofast
   #NativeOpt       : -noassert
 
