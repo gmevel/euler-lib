@@ -1,20 +1,11 @@
-(* Note: all functions here may assume that [m] is positive, and that arguments
- * [a] and [b] are under canonical form (that is, between 0 and [m] − 1).
- * They always return values under canonical form.
- *
- * TODO: check what happens for [min_int] (since [~-min_int = min_int]).
- * TODO: [pow ~modulo:1 a 0] currently returns 1 instead of 0.
- *
- * *)
-
-(* let sqrt_max_int = truncate@@sqrt@@float max_int *)
-let sqrt_max_int = 1 lsl ((Sys.word_size - 2) / 2)
-
-(* overflow-free modular arithnetic
- *
+(* Note: We must take care of avoiding overflows in the underlying integer
+ * operations. For instance, the modular multiplication is not as simple as
+ * [(a * b) mod m] (it is when [m]² < [max_int]).
  *     https://www.quora.com/How-can-I-execute-A-*-B-mod-C-without-overflow-if-A-and-B-are-lesser-than-C/answer/Dana-Jacobsen
  *     https://en.wikipedia.org/wiki/Modular_arithmetic#Example_implementations
  *)
+
+let sqrt_max_int = 1 lsl ((Sys.word_size - 2) / 2)
 
 let add ~modulo:m =
   assert (0 < m) ;
@@ -85,8 +76,8 @@ fun a b ->
  * in the latter function Bézout’s coefficients can overflow, whereas we are
  * only interested in their class modulo [m]. *)
 let inv ~modulo:m =
-  let ( -: )  = sub ~modulo:m
-  and ( *: )  = mul ~modulo:m in
+  let ( -: ) = sub ~modulo:m
+  and ( *: ) = mul ~modulo:m in
   let rec gcdext a b u v x y =
     if b = 0 then begin
       if a <> 1 then
@@ -107,15 +98,9 @@ let div ~modulo:m =
 fun a b ->
   mul a (inv b)
 
-(* Returns an element [x] such that [b]×[x] = [a], if there exists one.
- * It is unique only when [b] is inversible; in general, it is unique modulo [c]
- * where [c] = [m] ∕ gcd([m], [b]).
- * For example, modulo 10, 4×3 = 4×8 = 2, so 2 divided by 4 may be 3 or 8.
- * This example shows that the division 2 ∕ 4 cannot be simplified to 1 ∕ 2.
- * @raise Division_by_zero when there no such element. *)
 let div_nonunique ~modulo:m =
-  let ( -: )  = sub ~modulo:m
-  and ( *: )  = mul ~modulo:m in
+  let ( -: ) = sub ~modulo:m
+  and ( *: ) = mul ~modulo:m in
 fun a b ->
   assert (0 <= b && b < m) ;
   assert (0 <= a && a < m) ;
@@ -134,10 +119,6 @@ fun a b ->
 
 exception Factor_found of int
 
-(* Like [div ~modulo:m a b], except that it raises Division_by_zero only when
- * [b] is zero. If [b] is not inversible but not zero, [d] = gcd([m], [b]) gives
- * a non‐trivial factor of [m]; in that case, this function raises
- * [Factor_found d]. *)
 (*
 let div_factorize ~modulo:m a b =
   begin try
@@ -148,8 +129,8 @@ let div_factorize ~modulo:m a b =
   end
 *)
 let div_factorize ~modulo:m =
-  let ( -: )  = sub ~modulo:m
-  and ( *: )  = mul ~modulo:m in
+  let ( -: ) = sub ~modulo:m
+  and ( *: ) = mul ~modulo:m in
   let rec gcdext a b u v x y =
     if b = 0 then begin
       if a <> 1 then
@@ -169,9 +150,11 @@ fun a b ->
     a *: gcdext m b 1 0 0 1
 
 let pow ~modulo:m =
+  assert (m <> 1) ; (* FIXME For [m] = 1, this does not give canonical values. *)
   let pow = Common.pow ~mult:(mul ~modulo:m) ~unit:1
   and inv = inv ~modulo:m in
 fun a n ->
+  assert (n <> min_int) ;
   if 0 <= n then
     pow a n
   else
@@ -186,10 +169,11 @@ fun () ->
 
 module Make (M : sig val modulo : int end) = struct
 
-  let modulo = abs M.modulo
-
   let () =
-    assert (0 < modulo)
+    assert (M.modulo <> 0) ;
+    assert (M.modulo <> min_int)
+
+  let modulo = abs M.modulo
 
   type t = int
 
