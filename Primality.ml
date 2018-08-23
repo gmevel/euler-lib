@@ -195,27 +195,98 @@ let primes_under_10_000 =
  *)
 
 (* Large sieves are a waste of time and memory, so we forbid them. *)
-let max_sieve = 1 lsl 20
+let max_sieve = 1 lsl 26
 
+(* Euler’s sieve.
+ *     https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes#Euler's_Sieve *)
 let prime_sieve nmax ~do_prime =
-  assert (2 <= nmax) ;
+  assert (3 <= nmax) ;
   assert (nmax < max_sieve) ;
+  (* We store the elements of the sieve as a linked list embedded in an array.
+   * If n is an element of the list, then next_elt.(n) gives the next (greater)
+   * element of the list. The special value 0 means end‐of‐list. We store the
+   * first element in next_elt.(0).
+   *
+   * In fact, to save space and time, we do not store even numbers. As a
+   * consequence, the address a represents the odd number 2a+1.
+   *
+   * We need to mark elements for deletion. Of course we could use another array
+   * storing boolean values, but in order to save space and time again, we make
+   * it more compact. The convention we adopt is that bitwise‐negating the value
+   * next_elt.(n) of an element n marks that element n for deletion. *)
   do_prime 2 ;
-  let s = Array.init (succ nmax) (fun i -> i land 1 <> 0) in
-  s.(2) <- true ;
-  let i = ref 1 in
-  while !i <= nmax - 2 do
-    i := !i + 2 ;
-    if s.(!i) then begin
-      do_prime !i ;
-      let j = ref !i in
-      while !j <= nmax - !i do
-        j := !j + !i ;
-        s.(!j) <- false
-      done
+  let half_nmax = (nmax - 1) / 2 in
+  let next_elt = Array.init (succ half_nmax) (fun n -> n + 1) in
+(*   next_elt.(0) <- 1 ; *)
+  next_elt.(half_nmax) <- 0 ;
+  (* The loop invariant is that the elements of the list are the numbers which
+   * are coprime with all the primes already identified.
+   *
+   * Each iteration consists in popping the first element p of the list, which
+   * is prime, and removing all multiples of that prime which are still in the
+   * list. Such multiples are of the form p×m where m is coprime with all
+   * previous primes; in other words, m is itself an element of the list. So the
+   * elements to remove are precisely the numbers p×m where m is an element of
+   * the list and p×m ≤ nmax.
+   *
+   * Because we need to multiply p with all elements m of the list, elements
+   * must not be removed immediately. Instead we mark them for deletion; they
+   * are definitely removed when the cursor traverses them.
+   *
+   * No element is marked twice, so the sieve has a linear complexity. *)
+  (* Stop as soon as the next prime exceeds √nmax. *)
+  let r = (Arith.isqrt nmax - 1) / 2 in
+  while next_elt.(0) <= r do
+    (* Pop the first element of the list, which is a prime. *)
+    let half_p = next_elt.(0) in
+    let p = (half_p lsl 1) lor 1 in
+    do_prime p ;
+    next_elt.(half_p) <- lnot next_elt.(half_p) ; (* mark p for deletion *)
+    (* Traverse the list, removing marked elements on‐the‐fly. For each element
+     * m of the list, we mark the element p×m for deletion. We need to do so
+     * only for m ≤ nmax ∕ p, hence we stop as soon as this bound is reached
+     * (this always happen before the end of the list). A consequence is that
+     * marked elements after this bound will not be deleted; this is not a
+     * problem, because they will not be visited by subsequent traversals, since
+     * each list traversal stops sooner than the previous one (because the bound
+     * decreases as p increases). *)
+    let previous = ref 0 in
+    let current  = ref half_p in
+    let bound = (nmax / p - 1) / 2 in
+    while !current <= bound do
+      let cur = !current in
+      let next = next_elt.(cur) in
+      (* If the current element is marked, we remove it from the linked list. *)
+      if next < 0 then begin
+        let next = lnot next in
+        next_elt.(!previous) <- next ;
+        current  := next ;
+      (* Otherwise, we just step by one in the linked list. *)
+      end else begin
+        previous := cur ;
+        current  := next ;
+      end ;
+      (* We mark p×m for deletion.
+       * If p = 2p'+1 and m = 2m'+1, then p×m = 2(p×m' + p') + 1. *)
+      let n = p * cur + half_p in
+      assert (next_elt.(n) >= 0) ; (* elements are marked only once *)
+      next_elt.(n) <- lnot next_elt.(n) ;
+    done
+  done ;
+  (* All remaining elements are prime (they are the primes greater than √nmax).
+   * Here, when traversing the list, we must make sure that we skip the elements
+   * which were marked for deletion but not removed in previous steps. *)
+  let current = ref next_elt.(0) in
+  while !current <> 0 do
+    let cur = !current in
+    let next = next_elt.(cur) in
+    if next < 0 then
+      current := lnot next
+    else begin
+      current := next ;
+      do_prime ((cur lsl 1) lor 1) ;
     end
-  done;
-  s
+  done
 
 let factorizing_sieve nmax ~do_factors =
   assert (0 <= nmax) ;
@@ -233,7 +304,7 @@ let factorizing_sieve nmax ~do_factors =
       done
     end ;
     factors.(n) <- List.rev factors.(n) ;
-    do_factors factors.(n)
+    do_factors factors.(n) n
   done ;
   factors
 
@@ -471,24 +542,29 @@ let is_prime = is_prime_aux ~first_primes:primes_under_100
 
 (******************************************************************************)
 
-(* TODO: Optimize this, for example using a sieve for small values. *)
 let primes nmax =
-  assert (2 <= nmax) ;
+  assert (3 <= nmax) ;
   let primes = Array.make (overestimate_number_of_primes nmax) 0 in
-  primes.(0) <- 2 ;
-  let i = ref 0 in
-  for k = 1 to (nmax - 1) / 2 do
+  let count_primes = ref 0 in
+  let add_prime p =
+    primes.(!count_primes) <- p ;
+    incr count_primes
+  in
+  let sieve_size = min (max_sieve - 1) nmax in
+  prime_sieve sieve_size ~do_prime:add_prime ;
+  (* TODO: Sieving is much faster than individual primality tests; the problem
+   * is that it costs a lot of memory. We should really support segmented
+   * sieving in order to overcome that problem, and do not use [is_prime]. *)
+  for k = (sieve_size - 1) / 2 + 1 to (nmax - 1) / 2 do
     let n = (k lsl 1) lor 1 in
-    if is_prime n then begin
-      incr i ;
-      primes.(!i) <- n ;
-    end
+    if is_prime n then
+      add_prime n ;
   done ;
   primes
 
 (* Read a precomputed list of prime numbers from a file.
- * Now that an efficient primality test is available, this method is obsolete.
- *)
+ * Now that an efficient primality test and an efficient sieve are available,
+ * this method is obsolete. *)
 (*
 let primes_from_file nmax =
   assert (0 <= nmax && nmax <= 1_000_000) ;
