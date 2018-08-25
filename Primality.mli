@@ -38,15 +38,14 @@ val primes_under_100 : int array
 (** The prime numbers less than 10 000, in ascending order. *)
 val primes_under_10_000 : int array
 
-(** Usual prime sieve. [prime_sieve nmax ~do_prime:f] calls [f] on each prime
-    number from 2 to [nmax] (included), as soon as they are found. This is
-    useful to iterate on (relatively small) prime numbers and stop when some
-    condition is met.
-    Note that this is costly both in time and in space, so [nmax] is bridled
-    with an internal upper bound.
-    {b Complexity:} time 𝒪([nmax]), space 𝒪([nmax]).
-*)
-val prime_sieve : int -> do_prime:(int -> unit) -> unit
+(** [primes nmax ~do_prime:f] calls [f] on all prime numbers in ascending order
+    from 2 to {e slightly more than} [nmax], as soon as they are found. This is
+    useful to iterate on prime numbers and stop when some condition is met. It
+    also returns all primes found in an array, whose end is padded with zeroes.
+    {b Complexity:} time 𝒪([nmax]×log(log([nmax]))),
+    space 𝒪(π([nmax])) = 𝒪([nmax]∕log([nmax])).
+ *)
+val primes : int -> do_prime:(int -> unit) -> int array
 
 (** Extended prime sieve. [factorizing_sieve nmax ~do_factors:f] computes the
     factorization of all numbers up to [nmax] (included). The result is an array
@@ -69,13 +68,6 @@ val prime_sieve : int -> do_prime:(int -> unit) -> unit
  *         http://mathworld.wolfram.com/DistinctPrimeFactors.html
  *)
 val factorizing_sieve : int -> do_factors:(factorization -> int -> unit) -> factorization array
-
-(** [primes nmax] returns all prime numbers which are at most equal to [nmax],
-    in ascending order. The end of the array is padded with 0 values.
-    {b Complexity:} time 𝒪([nmax]) primality tests (see {!is_prime} below),
-    space 𝒪(π([nmax])) = 𝒪([nmax]∕log([nmax])).
- *)
-val primes : int -> int array
 
 (******************************************************************************)
 

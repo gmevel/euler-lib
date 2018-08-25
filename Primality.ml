@@ -185,23 +185,216 @@ let primes_under_10_000 =
 
 (******************************************************************************)
 
-(* TODO: Use a better sieve, such as the sieve of Atkin, or wheel factorization;
- * support segmented sieve.
+(* Read a precomputed list of prime numbers from a file.
+ * Now that an efficient primality test and an efficient sieve are available,
+ * this method is obsolete. *)
+(*
+let primes_from_file nmax =
+  assert (0 <= nmax && nmax <= 1_000_000) ;
+  let li = ref [] in
+  let file = Scanf.Scanning.open_in "data/primes-under-1_000_000.data" in
+  let again = ref true in
+  while !again do
+    (* "%_1[\r]@\n" is a format trick that matches \n, \r\n and end‐of‐file. *)
+    Scanf.bscanf file "%u%_1[\r]@\n" @@fun p ->
+    if p <= nmax then
+      li := p :: !li ;
+    again := (p < nmax)
+  done ;
+  Scanf.Scanning.close_in file ;
+  List.rev !li
+*)
+
+(* TODO: Use a better sieve, such as the sieve of Atkin, or a wheel sieve.
  *     https://en.wikipedia.org/wiki/Generating_primes
  *     https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes
  *     https://en.wikipedia.org/wiki/Wheel_factorization
  *     https://en.wikipedia.org/wiki/Sieve_of_Atkin
  *     https://github.com/kimwalisch/primesieve
+ * TODO: Use bitvectors for sieves?
  *)
 
-(* Large sieves are a waste of time and memory, so we forbid them. *)
-let max_sieve = 1 lsl 26
+(* Size of a bool, in bytes. *)
+let bool_byte_size = Sys.word_size / 8
+(* Size of an int, in bytes. *)
+let int_byte_size = Sys.word_size / 8
+
+(* Maximum size of a non‐segmented sieve, in bytes. We forbid larger sieves
+ * because they consume too much memory and thus may provoke a crash, or at
+ * least put the computer in distress. Use a segmented sieve in that case. *)
+let max_sieve_byte_size = 1 lsl 28
+
+(* Size of a sieve segment, in bytes. Compared to the non‐segmented algorithm,
+ * the shorter the segment, the more memory is saved, but the greater the
+ * constant factor in computing time is. The bottleneck is the processor cache:
+ * when reducing the segment size, the time factor increases accordingly, but
+ * there is a massive drop when the segment starts fitting in the cache. So the
+ * best value is just under the cache size. *)
+let segm_byte_size = 1 lsl 19
+
+(* When nmax is below that threshold, we use the non‐segmented sieve algorithm;
+ * when nmax is at least equal to that threshold, we use the segmented one.
+ * Tweak it with benchmarks. *)
+let threshold_to_use_segmentation = 1 lsl 19
+
+(* The non‐segmented variant of the sieve of Eratosthenes. *)
+let eratosthenes_sieve =
+  (* To save space, we only store odd numbers, so that the actual array only
+   * stores C∕2 booleans, where C is the cardinal of the sieve.
+   * Then, the “address” addr represents the number 2×addr + 1.
+   * In the code below, addresses will be prefixed with ‘half_’. *)
+  let max_sieve_bool_size = max_sieve_byte_size / bool_byte_size in
+  let max_nmax = max_sieve_bool_size * 2 - 1 in
+fun nmax ~do_prime ->
+  assert (3 <= nmax && nmax <= max_nmax) ;
+  do_prime 2 ;
+  let half_nmax = (nmax - 1) / 2 in
+  let s = Array.make (half_nmax + 1) true in
+  let half_r = (Arith.isqrt nmax - 1) / 2 in
+  for half_n = 1 to half_r do
+    if s.(half_n) then begin
+      let p = (half_n lsl 1) lor 1 in
+      do_prime p ;
+      let addr_square_p = (p * p) lsr 1 in
+      for i = 0 to (half_nmax - addr_square_p) / p do
+        s.(addr_square_p + p * i) <- false
+      done
+    end
+  done ;
+  for half_n = half_r + 1 to half_nmax do
+    if s.(half_n) then
+      let p = (half_n lsl 1) lor 1 in
+      do_prime p
+  done
+
+(* The segmented variant of the sieve of Eratosthenes. *)
+let segmented_eratosthenes_sieve =
+  (* To save space, we only store odd numbers, so that the actual array only
+   * stores C∕2 booleans, where C is the cardinal of a segment.
+   * Then, at step K, the “address” addr represents the number C×K + 2×addr + 1.
+   * The segment represented is the set of numbers from C×K to C×(K+1) − 1, of
+   * which we only store odd numbers.
+   * In the code below, addresses will be prefixed with ‘addr_’ or ‘half_’. *)
+  let segm_bool_size = segm_byte_size / bool_byte_size in
+  let half_segm_cardinal = segm_bool_size in
+  let segm_cardinal = half_segm_cardinal * 2 in
+  let exception Break in
+fun nmax ~do_prime ->
+  assert (0 <= nmax) ;
+  (* Compute the number of segments, and ceil [nmax] to the closest multiple of
+   * the cardinal of a segment. *)
+  let number_of_segments = nmax / segm_cardinal + 1 in
+  assert (number_of_segments <= max_int / segm_cardinal) ;
+  let ceiled_nmax = number_of_segments * segm_cardinal - 1 in
+  (* Primes found so far are stored in this array. [count_primes] is their
+   * number, [count_prime_squares] is the number of primes whose square is less
+   * than the first value of the current segment (which means that the square
+   * has already been handled). *)
+  let primes = Array.make (overestimate_number_of_primes ceiled_nmax) 0 in
+  let count_primes = ref 0 in
+  let count_prime_squares = ref 0 in
+  let add_prime p =
+    do_prime p ;
+    primes.(!count_primes) <- p ;
+    incr count_primes
+  in
+  (* The current sieve segment is stored in this array. See the comment above
+   * for how to translate from addresses to values and conversely. *)
+  let s = Array.make half_segm_cardinal true in
+  (* [remove_multiples ~segm_first p m] marks as composite all elements of the
+   * current segment which are multiple of [p]; [segm_first] is the first value
+   * of the current segment, and [m] is the first multiple of [p] which is
+   * at least equal to [segm_first] (we MUST have [segm_first] ≤ [m]). *)
+  let remove_multiples ~segm_first p first_multiple =
+    let addr_first_multiple = (first_multiple - segm_first) lsr 1 in
+    for i = 0 to (half_segm_cardinal - 1 - addr_first_multiple) / p do
+      s.(addr_first_multiple + p * i) <- false
+    done
+  in
+  (* (0) Treat the prime 2 specially. *)
+  add_prime 2 ;
+  incr count_prime_squares ;
+  (* (1) Sieve the initial segment. This is regular sieving. *)
+  begin
+    let half_r = (Arith.isqrt (segm_cardinal - 1) - 1) / 2 in
+    for half_n = 1 to half_r do
+      if s.(half_n) then begin
+        let p = ((half_n lsl 1) lor 1) in
+        add_prime p ;
+        remove_multiples ~segm_first:0 p (p * p)
+      end
+    done ;
+    count_prime_squares := !count_primes ;
+    for half_n = half_r + 1 to half_segm_cardinal - 1 do
+      if s.(half_n) then
+        let p = ((half_n lsl 1) lor 1) in
+        add_prime p
+    done ;
+  end ;
+  (* (2) Sieve following segments. *)
+  for segm = 1 to number_of_segments - 1 do
+    let segm_first = segm_cardinal * segm in
+    let segm_last  = segm_first + segm_cardinal - 1 in
+    (* Reset the sieve. *)
+    Array.fill s 0 half_segm_cardinal true ;
+    (* Rule out odd primes already found, and whose square is less than
+     * [segm_first]. *)
+    for i = 1 to !count_prime_squares - 1 do
+      let p = primes.(i) in
+      (* Compute the first odd multiple of [p] at least equal to [segm_first]. *)
+      let first_multiple = (((segm_first + p-1) / p) lor 1) * p in
+      if first_multiple <= segm_last then
+        remove_multiples ~segm_first p first_multiple
+    done ;
+    (* Rule out primes already found, and whose square is at least equal to
+     * [segm_first]. *)
+    begin try
+      let r = Arith.isqrt segm_last in
+      for i = !count_prime_squares to !count_primes - 1 do
+        let p = primes.(i) in
+        if p > r then begin
+          count_prime_squares := i ;
+          raise Break ;
+        end ;
+        remove_multiples ~segm_first p (p * p)
+      done ;
+      (* We can prove that there is always at least one prime left, ie. there
+       * exists a prime p such that √((K+1)×C) ≤ p < K×C where K = [segm] is
+       * the step and C = [segm_cardinal] is the cardinal of a segment. This can
+       * be proven using Bertrand’s postulate. *)
+      assert false
+    with Break -> () end ;
+    (* Because there is still a prime whose square is greater than [segm_last],
+     * we know that the new primes in this segment also have their squares
+     * greater than [segm_last], so there is no need to sieve them out. *)
+    for addr_n = 0 to half_segm_cardinal - 1 do
+      if s.(addr_n) then
+        let p = ((addr_n lsl 1) lor 1) + segm_first in
+        add_prime p
+    done ;
+  done ;
+  primes
 
 (* Euler’s sieve.
- *     https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes#Euler's_Sieve *)
-let prime_sieve nmax ~do_prime =
-  assert (3 <= nmax) ;
-  assert (nmax < max_sieve) ;
+ *     https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes#Euler's_Sieve
+ * By contrast with Eratosthenes’s sieve, Eulers’s sieve removes composite
+ * numbers no more than once. It maintains a list of numbers still active, so
+ * that removed composites are never visited, and the next prime is found in
+ * constant time (as the first element of the list).
+ * Hence, it has a better asymptotic time complexity than Eratosthenes’ sieve.
+ *     Eratosthenes: time 𝒪([nmax]×log(log[nmax])), space 𝒪([nmax]).
+ *     Euler:        time 𝒪([nmax]),                space 𝒪([nmax]).
+ * However, log(log[nmax]) is not much and, in practice, Euler’s sieve is (very
+ * slightly) slower than Eratosthenes’ with the same level of optimization.
+ * Besides, it may require more space (since it stores a list of integers
+ * instead of an array of booleans); and it cannot be segmented. So we prefer
+ * Eratosthenes over Euler.
+ * Still, I find this algorithm elegant, so I leave the code here. :-) *)
+let euler_sieve =
+  let max_sieve_int_size = max_sieve_byte_size / int_byte_size in
+  let max_nmax = max_sieve_int_size * 2 - 1 in
+fun nmax ~do_prime ->
+  assert (3 <= nmax && nmax <= max_nmax) ;
   (* We store the elements of the sieve as a linked list embedded in an array.
    * If n is an element of the list, then next_elt.(n) gives the next (greater)
    * element of the list. The special value 0 means end‐of‐list. We store the
@@ -288,9 +481,30 @@ let prime_sieve nmax ~do_prime =
     end
   done
 
-let factorizing_sieve nmax ~do_factors =
-  assert (0 <= nmax) ;
-  assert (nmax < max_sieve) ;
+let primes nmax ~do_prime =
+  assert (3 <= nmax) ;
+  (* We are about to start a space‐consuming algorithm, so we’d better make room
+   * for it. *)
+  Gc.compact () ;
+  if nmax < threshold_to_use_segmentation then begin
+    let primes = Array.make (overestimate_number_of_primes nmax) 0 in
+    let count_primes = ref 0 in
+    let add_prime p =
+      do_prime p ;
+      primes.(!count_primes) <- p ;
+      incr count_primes
+    in
+    eratosthenes_sieve nmax ~do_prime:add_prime ;
+    primes
+  end else
+    segmented_eratosthenes_sieve nmax ~do_prime
+
+(* TODO: Segmentation. *)
+let factorizing_sieve =
+  let max_sieve_bool_size = max_sieve_byte_size / bool_byte_size in
+  let max_nmax = max_sieve_bool_size - 1 in
+fun nmax ~do_factors ->
+  assert (3 <= nmax && nmax <= max_nmax) ;
   let factors = Array.make (succ nmax) []
   and remaining_to_factor = Array.init (succ nmax) (fun n -> n) in
   for n = 2 to nmax do
@@ -539,48 +753,6 @@ fun ~first_primes n ->
 (* The end‐user primality test uses trial divisions with all prime numbers below
  * 100. *)
 let is_prime = is_prime_aux ~first_primes:primes_under_100
-
-(******************************************************************************)
-
-let primes nmax =
-  assert (3 <= nmax) ;
-  let primes = Array.make (overestimate_number_of_primes nmax) 0 in
-  let count_primes = ref 0 in
-  let add_prime p =
-    primes.(!count_primes) <- p ;
-    incr count_primes
-  in
-  let sieve_size = min (max_sieve - 1) nmax in
-  prime_sieve sieve_size ~do_prime:add_prime ;
-  (* TODO: Sieving is much faster than individual primality tests; the problem
-   * is that it costs a lot of memory. We should really support segmented
-   * sieving in order to overcome that problem, and do not use [is_prime]. *)
-  for k = (sieve_size - 1) / 2 + 1 to (nmax - 1) / 2 do
-    let n = (k lsl 1) lor 1 in
-    if is_prime n then
-      add_prime n ;
-  done ;
-  primes
-
-(* Read a precomputed list of prime numbers from a file.
- * Now that an efficient primality test and an efficient sieve are available,
- * this method is obsolete. *)
-(*
-let primes_from_file nmax =
-  assert (0 <= nmax && nmax <= 1_000_000) ;
-  let li = ref [] in
-  let file = Scanf.Scanning.open_in "data/primes-under-1_000_000.data" in
-  let again = ref true in
-  while !again do
-    (* "%_1[\r]@\n" is a format trick that matches \n, \r\n and end‐of‐file. *)
-    Scanf.bscanf file "%u%_1[\r]@\n" @@fun p ->
-    if p <= nmax then
-      li := p :: !li ;
-    again := (p < nmax)
-  done ;
-  Scanf.Scanning.close_in file ;
-  List.rev !li
-*)
 
 (******************************************************************************)
 
