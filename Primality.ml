@@ -545,11 +545,23 @@ fun nmax ~do_prime ->
   done
 
 let primes nmax ~do_prime =
-  assert (3 <= nmax) ;
+  assert (0 <= nmax) ;
   (* We are about to start a space‐consuming algorithm, so we’d better make room
    * for it. *)
   Gc.compact () ;
-  if nmax < threshold_to_use_segmentation then begin
+  (* We use precomputed primes. *)
+  if nmax <= 10_000 then begin
+    let i = ref 0 in
+    let len = Array.length primes_under_10_000 in
+    while !i < len && primes_under_10_000.(!i) <= nmax do
+      do_prime primes_under_10_000.(!i) ;
+      incr i ;
+    done ;
+    (* Return a copy so that the user can mutate it at will: *)
+    Array.sub primes_under_10_000 0 !i
+  end
+  (* We use the non‐segmented sieve of Eratosthenes. *)
+  else if nmax < threshold_to_use_segmentation then begin
     let primes = Array.make (overestimate_number_of_primes nmax) 0 in
     let count_primes = ref 0 in
     let add_prime p =
@@ -559,7 +571,9 @@ let primes nmax ~do_prime =
     in
     eratosthenes_sieve nmax ~do_prime:add_prime ;
     primes
-  end else
+  end
+  (* We use the segmented sieve of Eratosthenes. *)
+  else
     segmented_eratosthenes_sieve nmax ~do_prime
 
 (* TODO: Segmentation. *)
