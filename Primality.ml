@@ -211,7 +211,6 @@ let primes_from_file nmax =
  *     https://en.wikipedia.org/wiki/Wheel_factorization
  *     https://en.wikipedia.org/wiki/Sieve_of_Atkin
  *     https://github.com/kimwalisch/primesieve
- * TODO: Use bitvectors for sieves?
  *)
 
 (* Size of a bool, in bytes. *)
@@ -235,7 +234,71 @@ let segm_byte_size = 1 lsl 19
 (* When nmax is below that threshold, we use the non‐segmented sieve algorithm;
  * when nmax is at least equal to that threshold, we use the segmented one.
  * Tweak it with benchmarks. *)
-let threshold_to_use_segmentation = 1 lsl 19
+let threshold_to_use_segmentation = 1 lsl 24
+
+(* The “bitvector” is the datastructure we use for storing a large array of
+ * boolean values. Bit packing induces a time penalty but divides space by 64,
+ * so we can make our sieve segments 64 times larger with the same memory
+ * footprint, which partially compensates for the loss in performance. In
+ * practice, it is faster by a small factor, but only if using unsafe indexing…
+ * Still, it divides space used by the non‐segmented sieve, and thus let us
+ * avoid segmenting for larger values of [nmax]. *)
+module type BITVECTOR
+= sig
+  type t
+  val number_of_booleans_in_byte_size : int -> int
+  val make : int -> t
+  val get : t -> int -> bool
+  val unset : t -> int -> unit
+  val set_all : t -> unit
+end
+
+(* Implementation of bitvectors with a regular array of booleans. *)
+module BitVector_array : BITVECTOR
+= struct
+  type t = bool array
+  let number_of_booleans_in_byte_size byte_size = byte_size / bool_byte_size
+  let[@inline] make n = Array.make n true
+  let[@inline] get v i = v.(i)
+  let[@inline] unset v i = v.(i) <- false
+  (*let[@inline] get v i = Array.unsafe_get v i*)
+  (*let[@inline] unset v i = Array.unsafe_set v i false*)
+  let[@inline] set_all v = Array.fill v 0 (Array.length v) false
+end
+
+(* Implementation of bitvectors with bit packing. *)
+module BitVector_bitpacking : BITVECTOR
+= struct
+  type t = bytes
+  let number_of_booleans_in_byte_size byte_size = byte_size * 8
+  let masks =
+    [|
+      0b00000001 ;
+      0b00000010 ;
+      0b00000100 ;
+      0b00001000 ;
+      0b00010000 ;
+      0b00100000 ;
+      0b01000000 ;
+      0b10000000 ;
+    |]
+  let[@inline] make n =
+    Bytes.make ((n + 7) lsr 3) '\x00'
+  let[@inline] get v i =
+    Char.code (Bytes.unsafe_get v (i lsr 3))
+    land Array.unsafe_get masks (i land 7)
+    = 0
+  let[@inline] unset v i =
+    let j = i lsr 3 in
+    Bytes.unsafe_set v j
+      (Char.unsafe_chr
+         (Char.code (Bytes.unsafe_get v j)
+          lor Array.unsafe_get masks (i land 7)))
+  let[@inline] set_all v =
+    Bytes.fill v 0 (Bytes.length v) '\x00'
+end
+
+module BitVector = BitVector_bitpacking
 
 (* The non‐segmented variant of the sieve of Eratosthenes. *)
 let eratosthenes_sieve =
@@ -243,26 +306,26 @@ let eratosthenes_sieve =
    * stores C∕2 booleans, where C is the cardinal of the sieve.
    * Then, the “address” addr represents the number 2×addr + 1.
    * In the code below, addresses will be prefixed with ‘half_’. *)
-  let max_sieve_bool_size = max_sieve_byte_size / bool_byte_size in
+  let max_sieve_bool_size = BitVector.number_of_booleans_in_byte_size max_sieve_byte_size in
   let max_nmax = max_sieve_bool_size * 2 - 1 in
 fun nmax ~do_prime ->
   assert (3 <= nmax && nmax <= max_nmax) ;
   do_prime 2 ;
   let half_nmax = (nmax - 1) / 2 in
-  let s = Array.make (half_nmax + 1) true in
+  let s = BitVector.make (half_nmax + 1) in
   let half_r = (Arith.isqrt nmax - 1) / 2 in
   for half_n = 1 to half_r do
-    if s.(half_n) then begin
+    if BitVector.get s half_n then begin
       let p = (half_n lsl 1) lor 1 in
       do_prime p ;
       let addr_square_p = (p * p) lsr 1 in
       for i = 0 to (half_nmax - addr_square_p) / p do
-        s.(addr_square_p + p * i) <- false
+        BitVector.unset s (addr_square_p + p * i)
       done
     end
   done ;
   for half_n = half_r + 1 to half_nmax do
-    if s.(half_n) then
+    if BitVector.get s half_n then
       let p = (half_n lsl 1) lor 1 in
       do_prime p
   done
@@ -275,7 +338,7 @@ let segmented_eratosthenes_sieve =
    * The segment represented is the set of numbers from C×K to C×(K+1) − 1, of
    * which we only store odd numbers.
    * In the code below, addresses will be prefixed with ‘addr_’ or ‘half_’. *)
-  let segm_bool_size = segm_byte_size / bool_byte_size in
+  let segm_bool_size = BitVector.number_of_booleans_in_byte_size segm_byte_size in
   let half_segm_cardinal = segm_bool_size in
   let segm_cardinal = half_segm_cardinal * 2 in
   let exception Break in
@@ -293,22 +356,22 @@ fun nmax ~do_prime ->
   let primes = Array.make (overestimate_number_of_primes ceiled_nmax) 0 in
   let count_primes = ref 0 in
   let count_prime_squares = ref 0 in
-  let add_prime p =
+  let[@inline] add_prime p =
     do_prime p ;
     primes.(!count_primes) <- p ;
     incr count_primes
   in
   (* The current sieve segment is stored in this array. See the comment above
    * for how to translate from addresses to values and conversely. *)
-  let s = Array.make half_segm_cardinal true in
+  let s = BitVector.make half_segm_cardinal in
   (* [remove_multiples ~segm_first p m] marks as composite all elements of the
    * current segment which are multiple of [p]; [segm_first] is the first value
    * of the current segment, and [m] is the first multiple of [p] which is
    * at least equal to [segm_first] (we MUST have [segm_first] ≤ [m]). *)
-  let remove_multiples ~segm_first p first_multiple =
+  let[@inline] remove_multiples ~segm_first p first_multiple =
     let addr_first_multiple = (first_multiple - segm_first) lsr 1 in
     for i = 0 to (half_segm_cardinal - 1 - addr_first_multiple) / p do
-      s.(addr_first_multiple + p * i) <- false
+      BitVector.unset s (addr_first_multiple + p * i)
     done
   in
   (* (0) Treat the prime 2 specially. *)
@@ -318,7 +381,7 @@ fun nmax ~do_prime ->
   begin
     let half_r = (Arith.isqrt (segm_cardinal - 1) - 1) / 2 in
     for half_n = 1 to half_r do
-      if s.(half_n) then begin
+      if BitVector.get s half_n then begin
         let p = ((half_n lsl 1) lor 1) in
         add_prime p ;
         remove_multiples ~segm_first:0 p (p * p)
@@ -326,7 +389,7 @@ fun nmax ~do_prime ->
     done ;
     count_prime_squares := !count_primes ;
     for half_n = half_r + 1 to half_segm_cardinal - 1 do
-      if s.(half_n) then
+      if BitVector.get s half_n then
         let p = ((half_n lsl 1) lor 1) in
         add_prime p
     done ;
@@ -336,7 +399,7 @@ fun nmax ~do_prime ->
     let segm_first = segm_cardinal * segm in
     let segm_last  = segm_first + segm_cardinal - 1 in
     (* Reset the sieve. *)
-    Array.fill s 0 half_segm_cardinal true ;
+    BitVector.set_all s ;
     (* Rule out odd primes already found, and whose square is less than
      * [segm_first]. *)
     for i = 1 to !count_prime_squares - 1 do
@@ -368,7 +431,7 @@ fun nmax ~do_prime ->
      * we know that the new primes in this segment also have their squares
      * greater than [segm_last], so there is no need to sieve them out. *)
     for addr_n = 0 to half_segm_cardinal - 1 do
-      if s.(addr_n) then
+      if BitVector.get s addr_n then
         let p = ((addr_n lsl 1) lor 1) + segm_first in
         add_prime p
     done ;
