@@ -5,7 +5,7 @@
  *     https://en.wikipedia.org/wiki/Modular_arithmetic#Example_implementations
  *)
 
-let sqrt_max_int = 1 lsl ((Sys.word_size - 2) / 2)
+let sqrt_max_int = 1 lsl ((Sys.int_size - 1) / 2)
 
 let add ~modulo:m =
   assert (0 < m) ;

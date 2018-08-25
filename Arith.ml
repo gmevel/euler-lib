@@ -11,7 +11,7 @@ let ( ~-? ) = ( ~- )
 
 (* Number of bits of an unsigned integer (OCaml integers are one bit less than
  * machine words, and there is one sign bit). *)
-let uint_size = Sys.word_size - 2
+let uint_size = Sys.int_size - 1
 
 let add_nonneg =
   let highest_bit = 1 lsl (uint_size - 1) in

@@ -760,7 +760,7 @@ let is_probably_prime ?(rounds=10) n =
 let is_prime_aux =
   (* If we are in 32‐bit OCaml, some of the constants below exceed the capacity
    * of integers. *)
-  assert (Sys.word_size = 64) ;
+  assert (Sys.int_size >= 63) ;
   (* These small base sets are guaranteed to give allways‐correct result for
    * values of the input below the specified bound. the last one works for (at
    * least) all 64‐bit integers. they are found here:
