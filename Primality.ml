@@ -229,12 +229,15 @@ let max_sieve_byte_size = 1 lsl 28
  * when reducing the segment size, the time factor increases accordingly, but
  * there is a massive drop when the segment starts fitting in the cache. So the
  * best value is just under the cache size. *)
-let segm_byte_size = 1 lsl 19
+(* let segm_byte_size = 1 lsl 19 *)
+(* This setting is made obsolete by the pre‐culling feature. Now the memory
+ * footprint is adjusted through [PreCulling.rounds_per_segment] and the number
+ * of pre‐culled primes. *)
 
 (* When nmax is below that threshold, we use the non‐segmented sieve algorithm;
  * when nmax is at least equal to that threshold, we use the segmented one.
  * Tweak it with benchmarks. *)
-let threshold_to_use_segmentation = 1 lsl 24
+let threshold_to_use_segmentation = 1 lsl 23
 
 (* The “bitvector” is the datastructure we use for storing a large array of
  * boolean values. Bit packing induces a time penalty but divides space by 64,
@@ -330,17 +333,133 @@ fun nmax ~do_prime ->
       do_prime p
   done
 
-(* The segmented variant of the sieve of Eratosthenes. *)
+(* The segmented sieve algorithm is optimized with pre‐culling. Multiples of 2
+ * are already ruled out, which divides by 2 how many numbers are inspected
+ * for primality. We go further and rule out multiples of fixed small primes
+ * p1, …, pk. In other words, we only consider numbers which are coprime with
+ * all of these primes. Modulo Q = p1×…×pk, there are φ(Q) = (p1−1)×…×(pk−1)
+ * such elements.
+ *
+ * For example, for the primes 2, 3, 5, we have that 2×3×5 = 30 and the only
+ * numbers to consider are, modulo 30:
+ *     1, 7, 11, 13, 17, 19, 23, 29
+ * There are 1×2×4 = 8 of them, so we only consider an 8∕30‐th of all numbers,
+ * which represents a ratio of 27%. Adding more primes reduces the ratio.
+ *
+ * To iterate on these numbers, we can use the differences between successive
+ * elements:
+ *     increments = [ 6, 4, 2, 4, 2, 4, 6 ]
+ * We start with 1, then add 6 (to get 7), then add 2 (to get 11), and so on
+ * until we reach 29; after that, we start over from 30+1. This fits naturally
+ * into the segmented sieve algorithm, because we just have to set the cardinal
+ * of the segments to 30, or a multiple or 30. We call each chunk of length 30 a
+ * “round”.
+ *
+ * The ratio {numbers considered for primality} ∕ {all numbers} is φ(Q) ∕ Q.
+ * When pre‐culling all primes up to 17, it is about 18%.
+ *
+ * On the other hand, we have to store precomputed data made up of φ(Q) integers
+ * (the increments). The total memory footprint of the segmented sieve with
+ * pre‐culling is:
+ *   + φ(Q) integer values (the increments);
+ *   + Q × {rounds per segment} / 2 boolean values (the segment).
+ * So how many primes are pre‐culled, as well as how many rounds are done per
+ * segment, should be chosen carefully. *)
+
+module PreCulling
+: sig
+  (* The number of rounds per segment. Segments are intervals of cardinal
+   * [round_cardinal]×[rounds_per_segment]. *)
+  val rounds_per_segment : int
+  (* The cardinal of a round. This is the product of all pre‐culled primes. *)
+  val round_cardinal : int
+  (* The number of small primes that are pre‐culled. *)
+  val number_of_primes : int
+  (* [iter_half_coprimes ~rounds f] iterates on all numbers [n] between 0 and
+   * [round_cardinal]×[rounds] which are coprime with all pre‐culled primes.
+   * More exactly, it iterates on their “half” ([n]−1)∕2 ([n] is always odd).
+   * This is so because our sieve does not store even numbers. *)
+  val iter_half_coprimes : rounds:int -> (int -> unit) -> unit
+end
+= struct
+
+  let rounds_per_segment = 4
+
+  (* We use precomputed values. They have been generated with the code below.
+   * TODO: Handle code generation with the build system (things to consider:
+   * dune, ppx_blob, cppo, MetaOCaml). *)
+
+(*
+  (* The maximum prime to pre‐cull. *)
+  let pmax = 17
+
+  (* An array containing the primes to pre‐cull. *)
+  let first_primes =
+    let count = ref 0 in
+    while primes_under_100.(!count) <= pmax do incr count done ;
+    Array.sub primes_under_100 0 !count
+
+  let number_of_primes = Array.length first_primes
+
+  let round_cardinal = Array.fold_left ( * ) 1 first_primes
+
+  let phi = Array.fold_left (fun phi p -> phi*(p-1)) 1 first_primes
+
+  let half_increments : string =
+    let coprimes =
+      List.init round_cardinal (fun n -> n)
+      |> List.filter begin fun n ->
+           Array.for_all (fun p -> n mod p <> 0) first_primes
+         end
+      |> Array.of_list
+    in
+    String.init phi begin fun i ->
+      let inc =
+        if i = 0 then 2
+        else coprimes.(i) - coprimes.(i-1)
+      in
+      Char.chr (inc lsr 1)
+    end
+
+  let () =
+    let out = open_out "Primality__data_preculling.ml" in
+    Printf.fprintf out "let number_of_primes = %u\n\n" number_of_primes ;
+    Printf.fprintf out "let round_cardinal = %u\n\n" round_cardinal ;
+    Printf.fprintf out "let half_increments = %S\n\n" half_increments ;
+    close_out out
+*)
+
+  let number_of_primes = Primality__data_preculling.number_of_primes
+  let round_cardinal = Primality__data_preculling.round_cardinal
+
+  (* The increments divided by 2. The first increment is 2 in order to step from
+   * [round_cardinal]−1 to [round_cardinal]+1 (recall that the ring of coprime
+   * elements is symmetric).
+   * Increments are small integers, we store them in a string to save space. *)
+  let half_increments = Primality__data_preculling.half_increments
+
+  let[@inline] iter_half_coprimes ~rounds f =
+    let half_n = ref (~- 1) in
+    for _ = 1 to rounds do
+      StringLabels.iter half_increments ~f:begin fun c ->
+        let a = !half_n + Char.code c in
+        half_n := a ;
+        f a
+      end
+    done
+
+end (* module PreCulling *)
+
+(* The segmented variant of the sieve of Eratosthenes, with pre‐culling. *)
 let segmented_eratosthenes_sieve =
+  let segm_cardinal = PreCulling.round_cardinal * PreCulling.rounds_per_segment in
   (* To save space, we only store odd numbers, so that the actual array only
    * stores C∕2 booleans, where C is the cardinal of a segment.
    * Then, at step K, the “address” addr represents the number C×K + 2×addr + 1.
    * The segment represented is the set of numbers from C×K to C×(K+1) − 1, of
    * which we only store odd numbers.
    * In the code below, addresses will be prefixed with ‘addr_’ or ‘half_’. *)
-  let segm_bool_size = BitVector.number_of_booleans_in_byte_size segm_byte_size in
-  let half_segm_cardinal = segm_bool_size in
-  let segm_cardinal = half_segm_cardinal * 2 in
+  let half_segm_cardinal = segm_cardinal / 2 in
   let exception Break in
 fun nmax ~do_prime ->
   assert (0 <= nmax) ;
@@ -400,9 +519,9 @@ fun nmax ~do_prime ->
     let segm_last  = segm_first + segm_cardinal - 1 in
     (* Reset the sieve. *)
     BitVector.set_all s ;
-    (* Rule out odd primes already found, and whose square is less than
-     * [segm_first]. *)
-    for i = 1 to !count_prime_squares - 1 do
+    (* Rule out primes already found, and whose square is less than
+     * [segm_first]. Pre‐culled primes do not need to be processed. *)
+    for i = PreCulling.number_of_primes to !count_prime_squares - 1 do
       let p = primes.(i) in
       (* Compute the first odd multiple of [p] at least equal to [segm_first]. *)
       let first_multiple = (((segm_first + p-1) / p) lor 1) * p in
@@ -430,11 +549,12 @@ fun nmax ~do_prime ->
     (* Because there is still a prime whose square is greater than [segm_last],
      * we know that the new primes in this segment also have their squares
      * greater than [segm_last], so there is no need to sieve them out. *)
-    for addr_n = 0 to half_segm_cardinal - 1 do
+    PreCulling.iter_half_coprimes ~rounds:PreCulling.rounds_per_segment
+    begin fun addr_n ->
       if BitVector.get s addr_n then
         let p = ((addr_n lsl 1) lor 1) + segm_first in
         add_prime p
-    done ;
+    end ;
   done ;
   primes
 

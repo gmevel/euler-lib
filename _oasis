@@ -19,7 +19,7 @@ Description:
 Library "project-euler-lib"
   Path            : .
   Modules         : Common, Arith, ModArith, Primality, Farey
-  InternalModules :
+  InternalModules : Primality__data_preculling
   BuildDepends    : seq, containers
   NativeOpt       : -inline=5 -ccopt -Ofast
   #NativeOpt       : -noassert
