@@ -197,7 +197,9 @@ module Make (M : sig val modulo : int end) = struct
 
   let ( /: ) = div ~modulo
 
-  let ( //: ) = div_factorize ~modulo
+  let ( //: ) = div_nonunique ~modulo
+
+  let div_factorize = div_factorize ~modulo
 
   let pow = pow ~modulo
 

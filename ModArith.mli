@@ -123,8 +123,11 @@ module Make : (sig val modulo : int end) -> sig
   (** Modular division. *)
   val ( /: ) : t -> t -> t
 
-  (** This is {!ModArith.div_factorize ~modulo}. *)
+  (** This is {!ModArith.div_nonunique ~modulo}. “Divide, just divide.” *)
   val ( //: ) : t -> t -> t
+
+  (** This is {!ModArith.div_factorize ~modulo}. *)
+  val div_factorize : t -> t -> t
 
   (** Modular exponentiation. *)
   val pow : t -> int -> t
