@@ -385,58 +385,29 @@ end
 
   let rounds_per_segment = 4
 
-  (* We use precomputed values. They have been generated with the code below.
-   * TODO: Handle code generation with the build system (things to consider:
-   * dune, ppx_blob, cppo, MetaOCaml). *)
+  (* Values are pre‐computed with [gen-preculling.ml]. Adjust there the number
+   * of primes to pre‐cull.
+   *
+   * TODO: Generally speaking, code generation could be done better. In this
+   * case, we refer to a separate (generated) module, whereas what we really
+   * want is having the pre‐computed values inserted back into the source code
+   * (referring to another module induces a small penalty). Furthermore, we may
+   * want to use other values of this module during pre‐computing (such as
+   * [Primality.primes_under_100]), or numeric parameters. Having to set
+   * parameters in two different places is inconvenient.
+   * Things to consider:
+   *   — ppx_blob, ocamlify, cppo (preprocessing tools which provide code inclusion)
+   *   — MetaOCaml (fully‐fledged multi‐stage programming)
+   *)
 
-(*
-  (* The maximum prime to pre‐cull. *)
-  let pmax = 17
+  let number_of_primes : int = Primality__data_preculling.number_of_primes
+  let round_cardinal   : int = Primality__data_preculling.round_cardinal
 
-  (* An array containing the primes to pre‐cull. *)
-  let first_primes =
-    let count = ref 0 in
-    while primes_under_100.(!count) <= pmax do incr count done ;
-    Array.sub primes_under_100 0 !count
-
-  let number_of_primes = Array.length first_primes
-
-  let round_cardinal = Array.fold_left ( * ) 1 first_primes
-
-  let phi = Array.fold_left (fun phi p -> phi*(p-1)) 1 first_primes
-
-  let half_increments : string =
-    let coprimes =
-      List.init round_cardinal (fun n -> n)
-      |> List.filter begin fun n ->
-           Array.for_all (fun p -> n mod p <> 0) first_primes
-         end
-      |> Array.of_list
-    in
-    String.init phi begin fun i ->
-      let inc =
-        if i = 0 then 2
-        else coprimes.(i) - coprimes.(i-1)
-      in
-      Char.chr (inc lsr 1)
-    end
-
-  let () =
-    let out = open_out "Primality__data_preculling.ml" in
-    Printf.fprintf out "let number_of_primes = %u\n\n" number_of_primes ;
-    Printf.fprintf out "let round_cardinal = %u\n\n" round_cardinal ;
-    Printf.fprintf out "let half_increments = %S\n\n" half_increments ;
-    close_out out
-*)
-
-  let number_of_primes = Primality__data_preculling.number_of_primes
-  let round_cardinal = Primality__data_preculling.round_cardinal
-
-  (* The increments divided by 2. The first increment is 2 in order to step from
-   * [round_cardinal]−1 to [round_cardinal]+1 (recall that the ring of coprime
-   * elements is symmetric).
+  (* The increments, divided by 2. The first increment is 2 in order to step
+   * from [round_cardinal]−1 to [round_cardinal]+1 (recall that the ring of
+   * coprime residues is symmetric).
    * Increments are small integers, we store them in a string to save space. *)
-  let half_increments = Primality__data_preculling.half_increments
+  let half_increments : string = Primality__data_preculling.half_increments
 
   let[@inline] iter_half_coprimes ~rounds f =
     let half_n = ref (~- 1) in
