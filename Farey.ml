@@ -135,7 +135,7 @@ let rev_iter_farey dmax ?starting1 ?starting2 f =
 (* [list_farey dmax] returns the Farey sequence of order [dmax] as a list. *)
 let list_farey dmax =
   let li = ref [] in
-  iter_farey 8 (fun frac -> li := frac :: !li) ;
+  iter_farey dmax (fun frac -> li := frac :: !li) ;
   List.rev !li
 
 let () =

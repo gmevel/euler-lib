@@ -5,7 +5,7 @@
 	(libraries   seq containers zarith)
 	(modules     (:standard))
 	(flags       (:standard
-		-w +a@8@14@29@28-32-60
+		-w +a@8@14@29@28-6-32-60
 		-short-paths -principal -strict-sequence -safe-string
 		-unboxed-types
 		;-noassert

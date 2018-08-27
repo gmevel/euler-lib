@@ -16,7 +16,7 @@ fun b n ->
   else
     pow ~acc:unit b n
 
-let rec memoized_fix f =
+let memoized_fix f =
   let mem = Hashtbl.create 1 in
   let rec fx n =
     try Hashtbl.find mem n with Not_found ->
