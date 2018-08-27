@@ -1,0 +1,14 @@
+(library
+	(name        PE)
+	(public_name PE)
+	(wrapped     true)
+	(libraries   seq containers zarith)
+	(modules     (:standard))
+	(flags       (:standard
+		-w +a@8@14@29@28-32-60
+		-short-paths -principal -strict-sequence -safe-string
+		-unboxed-types
+		;-noassert
+	))
+	(ocamlopt_flags (:standard -inline=5 -ccopt -Ofast))
+)
