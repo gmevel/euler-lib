@@ -1,0 +1,21 @@
+let interactive = !Sys.interactive ;;
+Sys.interactive := false ;;
+
+(* Source ~/.ocamlinit if it exists. *)
+begin try
+  Topdirs.dir_use Format.err_formatter (Sys.getenv "HOME" ^ "/.ocamlinit")
+with Not_found -> () end
+;;
+
+(* Load required packages. *)
+#use "topfind" ;;
+#require "seq" ;;
+#require "containers" ;;
+#require "zarith" ;;
+
+(* Load PE. *)
+#directory "_build/default/.PE.objs/" ;;
+#load_rec "_build/default/PE.cma" ;;
+Printf.printf "PE is loaded\n" ;;
+
+Sys.interactive := interactive ;;
