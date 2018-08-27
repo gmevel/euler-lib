@@ -7,6 +7,8 @@ lib:
 
 doc:
 	dune build @doc
+	@# We replace odoc theme with ocamldoc theme (hackish!):
+	@cp ocamldoc-style.css _build/default/_doc/_html/odoc.css
 
 test:
 	@echo -e '\e[1;41mTODO\e[0m use a test tool!'
