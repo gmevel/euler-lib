@@ -1,6 +1,6 @@
 (library
 	(name        PE)
-	(public_name PE)
+	(public_name pe)
 	(wrapped     true)
 	(libraries   seq containers zarith)
 	(modules     (:standard \ gen-preculling))

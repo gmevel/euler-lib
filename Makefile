@@ -5,10 +5,10 @@ all: lib doc test
 lib:
 	dune build
 	@# We do not expose internal modules (hackish!!):
-	@rm _build/install/default/lib/PE/PE__*
-	@sed '/_build\/install\/default\/lib\/PE\/PE__.*/d' -i _build/default/PE.install
-	@sed '/_build\/install\/default\/lib\/PE\/PE.cm[xt]/d' -i _build/default/PE.install
-	@cp _build/default/PE.install PE.install
+	@rm _build/install/default/lib/pe/PE__*
+	@sed '/_build\/install\/default\/lib\/pe\/PE__.*/d' -i _build/default/pe.install
+	@sed '/_build\/install\/default\/lib\/pe\/PE.cm[xt]/d' -i _build/default/pe.install
+	@cp _build/default/pe.install pe.install
 
 doc:
 	dune build @doc
