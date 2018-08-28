@@ -13,6 +13,7 @@ bug-reports: "https://gitlab.crans.org/mevel/project-euler-lib/issues"
 
 available: [ ocaml-version >= "4.02.0" ]
 depends: [
+	"ocamlfind" { build }
 	"dune" { build }
 	"odoc" { doc }
 	"seq"
