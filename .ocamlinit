@@ -1,3 +1,5 @@
+(* NOTE: dune also provides the command “dune utop”. *)
+
 let interactive = !Sys.interactive ;;
 Sys.interactive := false ;;
 
@@ -14,8 +16,8 @@ with Not_found -> () end
 #require "zarith" ;;
 
 (* Load PE. *)
-#directory "_build/default/.PE.objs/" ;;
-#load_rec "_build/default/PE.cma" ;;
+#directory "_build/install/default/lib/PE/" ;;
+#load_rec "PE.cma" ;;
 Printf.printf "PE is loaded\n" ;;
 
 Sys.interactive := interactive ;;
