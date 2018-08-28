@@ -1,7 +1,8 @@
 (library
-	(name        PE)
 	(public_name pe)
+	(name        PE)
 	(wrapped     true)
+	(synopsis    "An OCaml library for Project Euler problems. This is mostly an arithmetic library.")
 	(libraries   seq containers zarith)
 	(modules     (:standard \ gen-preculling))
 	(flags       (:standard

@@ -1,9 +1,12 @@
+# This option is intended to be used from opam.
+DUNE_BUILD_OPTIONS ?=
+
 default: all
 
 all: lib doc test
 
 lib:
-	dune build
+	dune build $(DUNE_BUILD_OPTIONS)
 	@# We do not expose internal modules (hackish!!).
 	@# For this to work, internal modules PE__* must be shipped in the archive
 	@# file of the library. Otherwise, any internal reference to module PE__Foo
@@ -35,6 +38,7 @@ clean:
 	dune clean
 
 install: lib
+	ocamlfind remove pe
 	dune install
 
 # example Makefile for dune:

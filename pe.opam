@@ -1,0 +1,26 @@
+opam-version: "1.2"
+
+name:        "pe"
+version:     "0.0"
+license:     "WTFPL"
+author:      "Glen Mével <glen.mevel@crans.org>"
+maintainer:  "Glen Mével <glen.mevel@crans.org>"
+tags:        [ "arithmetic" "primes" ]
+doc:         "https://perso.crans.org/mevel/project-euler-lib/doc/index.html"
+homepage:    "https://gitlab.crans.org/mevel/project-euler-lib"
+dev-repo:    "https://gitlab.crans.org/mevel/project-euler-lib.git"
+bug-reports: "https://gitlab.crans.org/mevel/project-euler-lib/issues"
+
+available: [ ocaml-version >= "4.02.0" ]
+depends: [
+	"dune" { build }
+	"odoc" { doc }
+	"seq"
+	"containers"
+	"zarith"
+]
+
+build:      [ make "lib" "DUNE_BUILD_OPTIONS='-p %{name}% -j %{jobs}%'" ]
+build-doc:  [ make "doc" ]
+install:    [ make "install" ]
+remove:     [ "ocamlfind" "remove" name ]
