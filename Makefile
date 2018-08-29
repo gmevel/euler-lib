@@ -7,7 +7,7 @@ all: lib doc test
 
 lib:
 	dune build $(DUNE_BUILD_OPTIONS)
-	@# We do not expose internal modules (hackish!!).
+	@# We would like not to expose internal modules (hackish!!).
 	@# For this to work, internal modules PE__* must be shipped in the archive
 	@# file of the library. Otherwise, any internal reference to module PE__Foo
 	@# (either the exposed module PE.Foo being an alias to PE__Foo, or another
@@ -20,9 +20,12 @@ lib:
 	@#   — Or, PE.Foo includes PE__Foo (in the sense of module inclusion); in
 	@#     this case, it seems that the produced archive file ships PE__Foo.
 	@# There should be a way to do this from dune…
-	@rm _build/install/default/lib/pe/PE__*
-	@sed '/_build\/install\/default\/lib\/pe\/PE__.*/d' -i _build/default/pe.install
-	@sed '/_build\/install\/default\/lib\/pe\/PE.cm[xt]/d' -i _build/default/pe.install
+	@# In fact, we HAVE to provide *.cmi and .cmti files of internal modules, so
+	@# that odoc (through odig) can build the HTML documentation!
+	@rm _build/install/default/lib/pe/PE__*.cm[oxt]
+	@rm _build/install/default/lib/pe/PE.cm[oxt]
+	@sed '/{"PE__.*\.cm[oxt]"}/d' -i _build/default/pe.install
+	@sed '/{"PE\.cm[oxt]"}/d'     -i _build/default/pe.install
 	@cp _build/default/pe.install pe.install
 
 doc:
