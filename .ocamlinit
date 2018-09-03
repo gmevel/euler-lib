@@ -16,8 +16,8 @@ with Not_found -> () end
 #require "zarith" ;;
 
 (* Load PE. *)
-#directory "_build/install/default/lib/PE/" ;;
+#directory "_build/install/default/lib/pe/" ;;
 #load_rec "PE.cma" ;;
-Printf.printf "PE is loaded\n" ;;
+Printf.printf "pe is loaded\n" ;;
 
 Sys.interactive := interactive ;;
