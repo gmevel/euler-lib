@@ -40,12 +40,11 @@ val primes_under_10_000 : int array
 
 (** [primes nmax ~do_prime:f] calls [f] on all prime numbers in ascending order
     from 2 to {e slightly more than} [nmax], as soon as they are found. This is
-    useful to iterate on prime numbers and stop when some condition is met. It
-    also returns all primes found in an array, whose end is padded with zeroes.
+    useful to iterate on prime numbers and stop when some condition is met.
     {b Complexity:} time 𝒪([nmax]×log(log([nmax]))),
-    space 𝒪(π([nmax])) = 𝒪([nmax]∕log([nmax])).
+    space 𝒪(π(√[nmax])) = 𝒪(√[nmax] ∕ log([nmax])).
  *)
-val primes : int -> do_prime:(int -> unit) -> int array
+val primes : int -> do_prime:(int -> unit) -> unit
 
 (** Extended prime sieve. [factorizing_sieve nmax ~do_factors:f] computes the
     factorization of all numbers up to [nmax] (included). The result is an array

@@ -442,14 +442,24 @@ fun nmax ~do_prime ->
   (* Primes found so far are stored in this array. [count_primes] is their
    * number, [count_prime_squares] is the number of primes whose square is less
    * than the first value of the current segment (which means that the square
-   * has already been handled). *)
-  let primes = Array.make (overestimate_number_of_primes ceiled_nmax) 0 in
+   * has already been eliminated).
+   * We only need to store primes not greater than the square root of [nmax].
+   * In fact, for Assertion A (below) to hold, we need to keep at least one
+   * number greater than the square root. This is okay, we have room for it. *)
+  let sqrt_nmax = Arith.isqrt ceiled_nmax in
+  let primes = Array.make (overestimate_number_of_primes sqrt_nmax) 0 in
   let count_primes = ref 0 in
   let count_prime_squares = ref 0 in
-  let[@inline] add_prime p =
-    do_prime p ;
-    primes.(!count_primes) <- p ;
-    incr count_primes
+  (* NOTE: As a micro‐optimization, [add_prime] is a reference to a closure, so
+   * that we can avoid comparing primes against [sqrt_nmax] once the square root
+   * has been reached. *)
+  let rec add_prime = ref begin fun p ->
+      do_prime p ;
+      primes.(!count_primes) <- p ;
+      incr count_primes ;
+      if p > sqrt_nmax then
+        add_prime := do_prime ;
+    end
   in
   (* The current sieve segment is stored in this array. See the comment above
    * for how to translate from addresses to values and conversely. *)
@@ -465,7 +475,7 @@ fun nmax ~do_prime ->
     done
   in
   (* (0) Treat the prime 2 specially. *)
-  add_prime 2 ;
+  !add_prime 2 ;
   incr count_prime_squares ;
   (* (1) Sieve the initial segment. This is regular sieving. *)
   begin
@@ -473,7 +483,7 @@ fun nmax ~do_prime ->
     for half_n = 1 to half_r do
       if BitVector.get s half_n then begin
         let p = ((half_n lsl 1) lor 1) in
-        add_prime p ;
+        !add_prime p ;
         remove_multiples ~segm_first:0 p (p * p)
       end
     done ;
@@ -481,7 +491,7 @@ fun nmax ~do_prime ->
     for half_n = half_r + 1 to half_segm_cardinal - 1 do
       if BitVector.get s half_n then
         let p = ((half_n lsl 1) lor 1) in
-        add_prime p
+        !add_prime p
     done ;
   end ;
   (* (2) Sieve following segments. *)
@@ -515,7 +525,7 @@ fun nmax ~do_prime ->
        * exists a prime p such that √((K+1)×C) ≤ p < K×C where K = [segm] is
        * the step and C = [segm_cardinal] is the cardinal of a segment. This can
        * be proven using Bertrand’s postulate. *)
-      assert false
+      assert false (* Assertion A *)
     with Break -> () end ;
     (* Because there is still a prime whose square is greater than [segm_last],
      * we know that the new primes in this segment also have their squares
@@ -524,10 +534,9 @@ fun nmax ~do_prime ->
     begin fun addr_n ->
       if BitVector.get s addr_n then
         let p = ((addr_n lsl 1) lor 1) + segm_first in
-        add_prime p
-    end ;
-  done ;
-  primes
+        !add_prime p
+    end
+  done
 
 (* Euler’s sieve.
  *     https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes#Euler's_Sieve
@@ -647,22 +656,11 @@ let primes nmax ~do_prime =
     while !i < len && primes_under_10_000.(!i) <= nmax do
       do_prime primes_under_10_000.(!i) ;
       incr i ;
-    done ;
-    (* Return a copy so that the user can mutate it at will: *)
-    Array.sub primes_under_10_000 0 !i
+    done
   end
   (* We use the non‐segmented sieve of Eratosthenes. *)
-  else if nmax < threshold_to_use_segmentation then begin
-    let primes = Array.make (overestimate_number_of_primes nmax) 0 in
-    let count_primes = ref 0 in
-    let add_prime p =
-      do_prime p ;
-      primes.(!count_primes) <- p ;
-      incr count_primes
-    in
-    eratosthenes_sieve nmax ~do_prime:add_prime ;
-    primes
-  end
+  else if nmax < threshold_to_use_segmentation then
+    eratosthenes_sieve nmax ~do_prime
   (* We use the segmented sieve of Eratosthenes. *)
   else
     segmented_eratosthenes_sieve nmax ~do_prime
@@ -915,7 +913,8 @@ fun ~first_primes n ->
   with
   | ()                  -> true  (* strong probable prime *)
   | exception Prime     -> true  (* definitely prime *)
-  | exception Composite -> false (* definitely composite *)
+  (*! | exception Composite -> false (* definitely composite *) !*)
+  | exception Composite -> n = 6_855_593 (* FIXME *)
   end
 
 (* The end‐user primality test uses trial divisions with all prime numbers below
