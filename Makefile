@@ -22,10 +22,12 @@ lib:
 	@# There should be a way to do this from dune…
 	@# In fact, we HAVE to provide *.cmi and .cmti files of internal modules, so
 	@# that odoc (through odig) can build the HTML documentation!
-	@rm _build/install/default/lib/pe/PE__*.cm[oxt]
-	@rm _build/install/default/lib/pe/PE.cm[oxt]
-	@sed '/{"PE__.*\.cm[oxt]"}/d' -i _build/default/pe.install
-	@sed '/{"PE\.cm[oxt]"}/d'     -i _build/default/pe.install
+	@# Moreover, *.cmt files are required for Merlin the documentation of the
+	@# library (command :MerlinDocument in Vim).
+	@rm _build/install/default/lib/pe/PE__*.cm[ox]
+	@rm _build/install/default/lib/pe/PE.cm[ox]
+	@sed '/{"PE__.*\.cm[ox]"}/d' -i _build/default/pe.install
+	@sed '/{"PE\.cm[ox]"}/d'     -i _build/default/pe.install
 	@cp _build/default/pe.install pe.install
 
 doc:
