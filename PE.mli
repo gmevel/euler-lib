@@ -1,3 +1,7 @@
+(* FIXME: When an explicit interface is given, odoc does not generate the
+ * documentation for submodules (including functors) such as PE.ModArith.Make.
+ * Is this a bug in odoc? *)
+
 (** {2 Toplevel values} *)
 
 module Common : module type of Common
