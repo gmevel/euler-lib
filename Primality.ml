@@ -743,14 +743,6 @@ fun nmax ~do_factors ->
   * See https://miller-rabin.appspot.com/
   *)
 
-(* FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
- *
- *  [is_prime] gives a WRONG answer for n = 6855593 !
- *  (the only error found for n ≤ 402 027 267)
- *
- * FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
- *)
-
 exception Composite
 exception Prime
 
@@ -784,7 +776,7 @@ let miller_rabin_test ~bases n =
         x := ModArith.mul ~modulo:n !x !x ;
         (* In the following case, we know that n is composite and we can compute
          * factors of n: gcd(n, b^{m×2^{i−1}} − 1) and gcd(n, b^{m×2^{i−1}} + 1)
-         * are non‐trivial factors of n. *)
+         * are non‐trivial, coprime factors whose product equals n. *)
         (*if !x = 1 then
           raise Composite ;*)
         if !x = n-1 then
@@ -847,33 +839,75 @@ let is_probably_prime ?(rounds=10) n =
  * divisions, before resorting to the Rabin‐Miller test. It must at least
  * contain 2, or [n] must be odd. *)
 let is_prime_aux =
-  (* If we are in 32‐bit OCaml, some of the constants below exceed the capacity
-   * of integers. *)
-  assert (Sys.int_size >= 63) ;
-  (* These small base sets are guaranteed to give allways‐correct result for
+  (* These small base sets are guaranteed to give always‐correct result for
    * values of the input below the specified bound. the last one works for (at
-   * least) all 64‐bit integers. they are found here:
+   * least) all 64‐bit integers. They are found here:
    *     https://miller-rabin.appspot.com/
-   * Commented are sets whose some base does not fit in 63‐bit integers. *)
-  (*let bases1 = [ 9345883071009581737 ] in
-  let bound1 = 341531 in*)
+   * Each base set has a list ‘excl’ of counter-examples. These are the prime
+   * factors of the bases which are below the specified bound. They need to be
+   * checked only when they have not already been ruled out by a previous test,
+   * i.e. only if they are greater than the bound of the previous base set.
+   * Useful counter-examples are flagged with (*!*); there are so few of them
+   * that these lists are not used by the program (they are only documentary),
+   * instead the required checks are hardcoded.
+   * These counter-examples come from the fact that the Miller-Rabin test
+   * assumes that the number n being tested does not divide the base b. This
+   * always holds in the probabilistic test, (where we try random bases between
+   * 2 and n−2), but not in this deterministic variant (where we test n against
+   * fixed bases). When n divides b, the test always report that n is definitely
+   * composite, even when it prime.
+   * NOTE: This test assumes a 64-bit version of OCaml. Some of the constants
+   * below exceed 2^30, so it won’t even compile with 32-bit OCaml. Here are
+   * constants that work for 32-bit OCaml: *)
+  (*! let bases1 = [ 921211727 ] in !*)
+  (*! let _excl1 = [ (*!*)331 ] in !*)
+  (*! let bound1 = 49141 in !*)
+  (*! let bases2 = [ 11000544 ; 31481107 ] in !*)
+  (*! let _excl2 = [ 2 ; 3 ; 7 ; 19 ; 163 ; 241 ; 18661 ] in !*)
+  (*! let bound2 = 316349281 in !*)
+  (*! let bases3 = [ 2 ; 7 ; 61 ] in !*)
+  (*! let _excl3 = [ 2 ; 7 ; 61 ] in !*)
+  (* Conversely, this test is not known to be deterministic for numbers greater
+   * than 2^64. *)
+  assert (Sys.int_size = 63) ;
+  (* 1 base — does not fit in 63-bit integers: *)
+  (*! let bases1 = [ 9345883071009581737 ] in !*)
+  (*! let _excl1 = [ 47 ; 98207 ] in !*)
+  (*! let bound1 = 341531 in !*)
+  (* 1 base: *)
   let bases1 = [ 126401071349994536 ] in
+  let _excl1 = [ 2 ] in
   let bound1 = 291831 in
+  (* 2 bases: *)
   let bases2 = [ 336781006125 ; 9639812373923155 ] in
+  let _excl2 = [ 3 ; 5 ; 131 ; (*!*)6855593 ] in
   let bound2 = 1050535501 in
-  (*let bases3 = [ 4230279247111683200 ; 14694767155120705706 ; 16641139526367750375 ] in
-  let bound3 = 350269456337 in*)
+  (* 3 bases — does not fit in 63-bit integers: *)
+  (*! let bases3 = [ 4230279247111683200 ; 14694767155120705706 ; 16641139526367750375 ] in !*)
+  (*! let _excl3 = [ 2 ; 3 ; 5 ; 19 ; 29 ; 277 ; 991 ; 1931 ; 14347 ; 14683 ; 246557 ; (*!*)3709689913 ] in !*)
+  (*! let bound3 = 350269456337 in !*)
   let bases3 = [ 15 ; 7363882082 ; 992620450144556 ] in
+  let _excl3 = [ 2 ; 3 ; 5 ; 101 ; 60679 ] in
   let bound3 = 273919523041 in
-  (*let bases4 = [ 2 ; 141889084524735 ; 1199124725622454117 ; 11096072698276303650 ] in
-  let bound4 = 55245642489451 in*)
+  (* 4 bases — does not fit in 63-bit integers: *)
+  (*! let bases4 = [ 2 ; 141889084524735 ; 1199124725622454117 ; 11096072698276303650 ] in !*)
+  (*! let _excl4 = [ 2 ; 3 ; 5 ; 11 ; 23 ; 127 ; 56197 ; 3075593 ; 322232233 ; 3721305949 ] in !*)
+  (*! let bound4 = 55245642489451 in !*)
+  (* 4 bases: *)
   let bases4 = [ 2 ; 2570940 ; 211991001 ; 3749873356 ] in
+  let _excl4 = [ 2 ; 3 ; 5 ; 23 ; 181 ; 390407 ; 40759493 ] in
   let bound4 = 47636622961201 in
+  (* 5 bases: *)
   let bases5 = [ 2 ; 4130806001517 ; 149795463772692060 ; 186635894390467037 ; 3967304179347715805 ] in
+  let _excl5 = [ 2 ; 3 ; 5 ; 13 ; 29 ; 59 ; 79 ; 167 ; 62633 ; 299197 ; 2422837 ; 332721269 ; 560937673 ] in
   let bound5 = 7999252175582851 in
+  (* 6 bases: *)
   let bases6 = [ 2 ; 123635709730000 ; 9233062284813009 ; 43835965440333360 ; 761179012939631437 ; 1263739024124850375 ] in
+  let _excl6 = [ 2 ; 3 ; 5 ; 7 ; 13 ; 41 ; 61 ; 179 ; 1381 ; 30839 ; 157321 ; 385417 ; 627838711 ; 1212379867 ; 7985344259 ] in
   let bound6 = 585226005592931977 in
+  (* 7 bases: *)
   let bases7 = [ 2 ; 325 ; 9375 ; 28178 ; 450775 ; 9780504 ; 1795265022 ] in
+  let _excl7 = [ 2 ; 3 ; 5 ; 7 ; 13 ; 19 ; 73 ; 193 ; 407521 ; 299210837 ] in
 fun ~first_primes n ->
   let n = abs n in
   begin match
@@ -913,8 +947,8 @@ fun ~first_primes n ->
   with
   | ()                  -> true  (* strong probable prime *)
   | exception Prime     -> true  (* definitely prime *)
-  (*! | exception Composite -> false (* definitely composite *) !*)
-  | exception Composite -> n = 6_855_593 (* FIXME *)
+  | exception Composite ->       (* definitely composite, unless n divided one of the bases *)
+      n = 6_855_593 (* hardcoded counter-example (see above) *)
   end
 
 (* The end‐user primality test uses trial divisions with all prime numbers below
