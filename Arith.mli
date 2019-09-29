@@ -144,8 +144,9 @@ val valuation : factor:int -> int -> int * int
 (** [valuation_of_2] is equivalent to [valuation ~factor:2], but much faster. *)
 val valuation_of_2 : int -> int * int
 
-(** [is_square n] is true if and only if [n] is the square of an integer. *)
-val is_square : int -> bool
+(** [is_square ~root n] is true if and only if [n] is the square of [root]. When
+    [root] is omitted, [is_square n] says whether [n] is a perfect square. *)
+val is_square : ?root:int -> int -> bool
 
 (** [jacobi a n] is the Jacobi symbol ([a]|[n]), provided that [n] is odd and
     positive.
