@@ -773,13 +773,27 @@ let miller_rabin_test ~bases n =
       (* Test whether b^{m×2^i} ={n}= −1 for some 1 ≤ i < k. *)
       let x = ref x in
       for _ = 1 to pred k do
-        x := ModArith.mul ~modulo:n !x !x ;
-        (* In the following case, we know that n is composite and we can compute
-         * factors of n: gcd(n, b^{m×2^{i−1}} − 1) and gcd(n, b^{m×2^{i−1}} + 1)
-         * are non‐trivial, coprime factors whose product equals n. *)
-        (*if !x = 1 then
-          raise Composite ;*)
-        if !x = n-1 then
+        let y = ModArith.mul ~modulo:n !x !x in
+        (* When x² ={n}= 1, we know that n is composite and we can compute
+         * factors of n: gcd(n, x − 1) and gcd(n, x + 1) are non‐trivial,
+         * coprime factors whose product equals n.
+         *
+         * Likewise, when x² ={n}= −1, x is a square root of −1 modulo n. If
+         * n is prime, then there can only be two such square roots, and there
+         * are opposite to each other. We already found a square root r when
+         * testing against the previous base, so we may compare x to r; if
+         * x ≠ ±r, then n is composite, and gcd(n, x − r) and gcd(n, x + r) are
+         * non-trivial, coprime factors whose product equals n.
+         *
+         * In practice, those additional tests are very seldom useful when
+         * factorizing numbers, so they are commented out. *)
+        (*! if y = 1 then !*)
+        (*!   raise (ModArith.Factor_found (Arith.gcd n (!x - 1))) ; !*)
+        (*! if y = n-1 && !x <> !r && !x <> n - !r then !*)
+        (*!   if !r = 0 then r := !x else !*)
+        (*!     raise (ModArith.Factor_found (Arith.gcd n (!x - !r))) ; !*)
+        x := y ;
+        if y = n-1 then
           raise Strong_probable_prime
       done ;
       raise Composite
