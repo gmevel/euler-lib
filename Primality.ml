@@ -1092,7 +1092,7 @@ let rec merge_factors li1 li2 =
  * again. Moreover, we know that all numbers whose square root is less than
  * 10 007 (the smallest prime number that we did not ruled out) are prime. *)
 let lenstra_is_prime n =
-  n < 1_014_049 (* = 10_007² *)
+  n < 100_140_049 (* = 10_007² *)
   || is_prime_aux ~first_primes:[||] n
 
 (* Factorization algorithm based on Lenstra’s factor searching. *)
