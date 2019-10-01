@@ -367,7 +367,7 @@ let is_square =
 fun ?root n ->
   begin match root with
   | None   ->  is_square_mod_wordsz n && 0 <= n && let r = isqrt n in r * r = n
-  | Some r ->  is_square_mod_wordsz n && r < sqrt_max_int && r * r = n
+  | Some r ->  is_square_mod_wordsz n && r <= sqrt_max_int && r >= ~-sqrt_max_int && r * r = n
   end
 
 let jacobi a n =
