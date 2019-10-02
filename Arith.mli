@@ -31,6 +31,12 @@
 
 (******************************************************************************)
 
+(** The largest representable integer. This is [Pervasives.max_int]. *)
+val max_int : int
+
+(** The smallest representable integer. This is the opposite of [max_int]. *)
+val min_int : int
+
 (** Raised when the result of an operation exceeds the range of overflowing
     integers. *)
 exception Overflow
@@ -47,6 +53,15 @@ exception Division_not_exact
     null. *)
 val sign : int -> int
 
+(** Absolute value. This is the same as [Pervasives.abs]. It cannot overflow. *)
+val abs : int -> int
+
+(** Minimum of two integers. *)
+val min : int -> int -> int
+
+(** Maximum of two integers. *)
+val max : int -> int -> int
+
 (** Integer opposite. This is the same as [( ~- )]. It cannot overflow. *)
 val ( ~-? ) : int -> int
 
@@ -54,7 +69,7 @@ val ( ~-? ) : int -> int
     @raise Overflow when the result exceeds the range of overflowing integers. *)
 val ( +? ) : int -> int -> int
 
-(** Overflowing integer substraction.
+(** Overflowing integer subtraction.
     @raise Overflow when the result exceeds the range of overflowing integers. *)
 val ( -? ) : int -> int -> int
 

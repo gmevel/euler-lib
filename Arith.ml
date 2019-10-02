@@ -1,3 +1,11 @@
+(* We treat this native integer as an invalid value. We give it a name in this
+ * module so that we can refer to it even though we rebind the name min_int. *)
+let nan = min_int
+
+let max_int = max_int
+
+let min_int = min_int + 1
+
 exception Overflow
 
 exception Division_not_exact
@@ -6,6 +14,17 @@ let sign a =
   if a = 0      then   0
   else if a > 0 then ~+1
   else               ~-1
+
+let abs = abs
+
+(* A function specialized for the type int is faster than the existing
+ * polymorphic function. *)
+let min a b =
+  if a <= b then a else b
+
+(* Same remark. *)
+let max a b =
+  if a <= b then b else a
 
 let ( ~-? ) = ( ~- )
 
@@ -31,8 +50,8 @@ fun a b ->
   end
 
 let ( +? ) a b =
-  assert (a <> min_int) ;
-  assert (b <> min_int) ;
+  assert (a <> nan) ;
+  assert (b <> nan) ;
   (* If [a] and [b] are of the same sign: *)
   if a lxor b >= 0 then begin
     if a >= 0 then
@@ -43,8 +62,8 @@ let ( +? ) a b =
     a + b
 
 let ( -? ) a b =
-  assert (a <> min_int) ;
-  assert (b <> min_int) ;
+  assert (a <> nan) ;
+  assert (b <> nan) ;
   (* If [a] and [b] are of the same sign: *)
   if a lxor b >= 0 then
     a - b
@@ -80,8 +99,8 @@ fun a b ->
   end
 
 let ( *? ) a b =
-  assert (a <> min_int) ;
-  assert (b <> min_int) ;
+  assert (a <> nan) ;
+  assert (b <> nan) ;
   (* If [a] and [b] are of the same sign: *)
   if a lxor b >= 0 then begin
     if a >= 0 then
@@ -276,8 +295,8 @@ let gcdext a0 b0 =
   gcdext a0 b0 1 0 0 1
 
 let lcm a b =
-  assert (a <> min_int) ;
-  assert (b <> min_int) ;
+  assert (a <> nan) ;
+  assert (b <> nan) ;
   if a = 0 || b = 0 then
     0
   else
