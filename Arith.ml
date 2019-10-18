@@ -213,10 +213,10 @@ let log2sup_62bit n =
    * bits, compute the result for the remaining bits, and add 54. Here we could
    * use the floating‐point trick again, but since there are only 8 bits
    * remaining, it is faster to compute the exponent ourselves. *)
-  else
-(*
-  begin
+  else begin
     let n = n lsr 54 in
+    (* Using a linear search to find the highest bit set. *)
+(*
          if n >= 128 then 62
     else if n >=  64 then 61
     else if n >=  32 then 60
@@ -227,23 +227,33 @@ let log2sup_62bit n =
     else                  54 lor n
   end
 *)
-  (* Benchmarking suggests that, for random integers, a dichotomy is faster than
-   * a linear search for finding the highest bit set. This seems odd to me. *)
-  begin
-    let n = n lsr 54 in
+    (* Benchmarking suggests that, for random integers, a dichotomy is faster
+     * than a linear search for finding the highest bit set. This looks odd, but
+     * may be explained by a better branch prediction behavior. The code below
+     * is twice as fast as the code above. *)
+(*
     if n >= 16 then begin
       if n >= 64 then begin
-        if n >= 128 then 62 else 61
+        (*! if n >= 128 then 62 else 61 !*)
+        61 + (n lsr 7)
       end else begin
-        if n >= 32 then 60 else 59
+        (*! if n >= 32 then 60 else 59 !*)
+        59 + (n lsr 5)
       end
     end else begin
       if n >= 4 then begin
-        if n >= 8 then 58 else 57
+        (*! if n >= 8 then 58 else 57 !*)
+        57 + (n lsr 3)
       end else begin
-        if n >= 2 then 56 else 54 lor n
+        (*! if n >= 2 then 56 else 54 lor n !*)
+        54 + min 2 n
       end
     end
+*)
+    (* Better yet, we can simply use precomputed values (stored in a string to
+     * save space). This code is 16 times faster than the linear search. *)
+    let log2sup_8bit = "67889999::::::::;;;;;;;;;;;;;;;;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<================================================================>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" in
+    Char.code @@ String.unsafe_get log2sup_8bit n
   end
 
 let log2sup =
@@ -363,6 +373,7 @@ let valuation ~factor:d n =
   done ;
   (!k, !m)
 
+(*
 let valuation_of_2 n =
   assert (n <> 0) ;
   let k = ref 0 in
@@ -372,10 +383,28 @@ let valuation_of_2 n =
     m := !m asr 1 ;
   done ;
   (!k, !m)
+*)
+(* Reading by chunks of 8 bits and using precomputed values for the last 8 bits
+ * provides a significant speed-up. This implementation is 3.3 times faster than
+ * the naive one.
+ * NOTE: If we want to avoid spending 128 bytes of space, we can instead read by
+ * chunks of 4 bits, and store 8 precomputed values. That is almost as fast. *)
+let valuation_of_2 =
+  let values128 = "\007\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\004\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\005\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\004\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\006\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\004\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\005\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\004\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000" in
+fun n ->
+  assert (n <> 0) ;
+  let k = ref 0 in
+  let m = ref n in
+  while !m land 255 = 0 do
+    k := !k + 8 ;
+    m := !m asr 8 ;
+  done ;
+  let k = !k + (Char.code @@ String.unsafe_get values128 (!m land 127)) in
+  (k, n asr k)
 (* The following implementation is constant‐time. However, benchmarking shows
- * that it only becomes faster than the implementation above when the valuation
- * is at least 14, which is very unlikely. With random integers, it is about
- * twice slower. *)
+ * that it only becomes faster than the naive implementation above when the
+ * valuation is at least 14, which is very unlikely. With random integers, it is
+ * about twice slower. *)
 (*
 let valuation_of_2 n =
   assert (n <> 0) ;                  (*    n = 0b ???????10000 *)
@@ -388,6 +417,7 @@ let valuation_of_2 n =
   in
   (k, n asr k)
 *)
+
 
 (* NOTE: Another interesting thing to compute about perfect squares:
  *     W. D. Stangl, “Counting Squares in ℤn”, Mathematics Magazine, 1996:
