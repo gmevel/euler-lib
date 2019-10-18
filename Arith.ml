@@ -10,21 +10,71 @@ exception Overflow
 
 exception Division_not_exact
 
+(*
 let sign a =
   if a = 0      then   0
   else if a > 0 then ~+1
   else               ~-1
+*)
+(* Below is a branchless implementation, which is 3.5 times faster than the
+ * naive implementation. *)
+(*
+let sign a =
+  (a asr Sys.int_size) lor ((a lor (-a)) lsr (Sys.int_size - 1))
+*)
+(* Using the standard comparison function, specialized to type `int`, is even
+ * faster. Although the doc does not guarantee that `compare` always return
+ * −1, 0 or +1, it is enforced in all OCaml versions up to 4.09. This is about
+ * 4 times faster than the naive implementation. *)
+let sign a =
+  compare a 0
 
+(*
 let abs = abs
+*)
+(* Below is a branchless implementation, which is about 7.5 times faster than
+ * the naive implementation. *)
+let abs n =
+  let u = n asr Sys.int_size in
+  n lxor u - u
 
 (* A function specialized for the type int is faster than the existing
  * polymorphic function. *)
+(*
 let min a b =
   if a <= b then a else b
+*)
+(* Below is a branchless implementation, which is about 1.5 times faster than
+ * the naive implementation. Much shorter versions are presented in the wild,
+ * but they ignore the fact that the subtraction can overflow. *)
+let min a b =
+  let d = b - a in (* overflow is correctly dealt with *)
+  let s = a lxor b in
+  let r = (s land b) lor (lnot s land d) in
+  a + (d land (r asr Sys.int_size))
 
 (* Same remark. *)
+(*
 let max a b =
   if a <= b then b else a
+*)
+let max a b =
+  let d = b - a in (* overflow is correctly dealt with *)
+  let s = a lxor b in
+  let r = (s land b) lor (lnot s land d) in
+  b - (d land (r asr Sys.int_size))
+
+(* By specializing the standard `compare` to type `int`, it becomes much faster,
+ * about 5.5 times faster. *)
+let compare : int -> int -> int = compare
+(* Below is a branchless implementation, but it is about 1.5 slower than a call
+ * to the standard `compare` specialized to type `int` (and it does not
+ * normalize its return value to −1/0/+1). *)
+(*
+let compare a b =
+  let s = (a lxor b) asr Sys.int_size in
+  (s land (a lor 1)) lor (lnot s land (a-b))
+*)
 
 let ( ~-? ) = ( ~- )
 
@@ -386,7 +436,7 @@ let is_square =
 fun ?root n ->
   begin match root with
   | None   ->  is_square_mod_wordsz n && 0 <= n && let r = isqrt n in r * r = n
-  | Some r ->  is_square_mod_wordsz n && r <= sqrt_max_int && r >= ~-sqrt_max_int && r * r = n
+  | Some r ->  is_square_mod_wordsz n && abs r <= sqrt_max_int && r * r = n
   end
 
 let jacobi a n =

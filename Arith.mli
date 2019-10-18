@@ -62,6 +62,11 @@ val min : int -> int -> int
 (** Maximum of two integers. *)
 val max : int -> int -> int
 
+(** [compare a b] returns [0] when [a] is equal to [b], a negative integer when
+    [a] is smaller than [b], and a positive integer when [a] is greater than [b].
+    It is the same as [Pervasives.compare] but much faster. *)
+val compare : int -> int -> int
+
 (** Integer opposite. This is the same as [( ~- )]. It cannot overflow. *)
 val ( ~-? ) : int -> int
 
