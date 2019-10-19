@@ -100,7 +100,6 @@ let ( -? ) a b =
   else
     raise Overflow
 
-(* with a fast-path for small integers and delaying more operations: *)
 let ( *? ) =
   let uint_half_size = uint_size / 2 in
   let lower_half = (1 lsl uint_half_size) - 1 in
@@ -118,8 +117,8 @@ fun a0 b0 ->
       let al_bl = al*bl in
       let (h, l) = (al_bl lsr uint_half_size, al_bl land lower_half) in
       (* This expression does not overflow (each variable is at most equal to
-      * lower_half = 2^{N∕2}−1 where N = uint_size, so that the total is at most
-      * equal to lower_half² + lower_half, which is less than 2^N): *)
+       * lower_half = 2^{N∕2}−1 where N = uint_size, so that the total is
+       * at most equal to lower_half² + lower_half, which is less than 2^N): *)
       let h' = al*bh + h in
       if h' <= lower_half then
         sign (a0 lxor b0) * ((h' lsl uint_half_size) lor l)
@@ -144,7 +143,6 @@ fun a0 b0 ->
     else
       raise Overflow
   end
-
 
 let pow =
   Common.pow ~mult:( *? ) ~unit:1
