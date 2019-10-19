@@ -82,102 +82,99 @@ let ( ~-? ) = ( ~- )
  * machine words, and there is one sign bit). *)
 let uint_size = Sys.int_size - 1
 
-let add_nonneg =
-  let highest_bit = 1 lsl (uint_size - 1) in
-fun a b ->
-  assert (0 <= a) ;
-  assert (0 <= b) ;
-  if a land b land highest_bit <> 0 then
-    raise Overflow
-  else if (a lor b) land highest_bit = 0 then
-    a + b
-  else begin
-    let s = a + b in
-    if s land highest_bit = 0 then
-      raise Overflow
-    else
-      s
-  end
-
 let ( +? ) a b =
   assert (a <> nan) ;
   assert (b <> nan) ;
-  (* If [a] and [b] are of the same sign: *)
-  if a lxor b >= 0 then begin
-    if a >= 0 then
-      add_nonneg a b
-    else
-      ~- (add_nonneg ~-a ~-b)
-  end else
-    a + b
+  let s = a + b in
+  if (a lxor b) lor (a lxor lnot s) < 0 then
+    s
+  else
+    raise Overflow
 
 let ( -? ) a b =
   assert (a <> nan) ;
   assert (b <> nan) ;
-  (* If [a] and [b] are of the same sign: *)
-  if a lxor b >= 0 then
-    a - b
-  else begin
-    if a >= 0 then
-      add_nonneg a ~-b
-    else
-      ~- (add_nonneg ~-a b)
-  end
+  let d = a - b in
+  if (a lxor b) land (a lxor d) >= 0 then
+    d
+  else
+    raise Overflow
 
-let mul_nonneg =
+(* with a fast-path for small integers and delaying more operations: *)
+let ( *? ) =
   let uint_half_size = uint_size / 2 in
   let lower_half = (1 lsl uint_half_size) - 1 in
-fun a b ->
-  assert (0 <= a) ;
-  assert (0 <= b) ;
-  let (ah, al) = (a lsr uint_half_size, a land lower_half)
-  and (bh, bl) = (b lsr uint_half_size, b land lower_half) in
-  if ah <> 0 && bh <> 0 then
-    raise Overflow
+fun a0 b0 ->
+  assert (a0 <> nan) ;
+  assert (b0 <> nan) ;
+  let a = abs a0 in
+  if a <= lower_half then begin
+    let b = abs b0 in
+    if b <= lower_half then
+      a0 * b0
+    else begin
+      let al = a land lower_half in
+      let (bh, bl) = (b lsr uint_half_size, b land lower_half) in
+      let al_bl = al*bl in
+      let (h, l) = (al_bl lsr uint_half_size, al_bl land lower_half) in
+      (* This expression does not overflow (each variable is at most equal to
+      * lower_half = 2^{N∕2}−1 where N = uint_size, so that the total is at most
+      * equal to lower_half² + lower_half, which is less than 2^N): *)
+      let h' = al*bh + h in
+      if h' <= lower_half then
+        sign (a0 lxor b0) * ((h' lsl uint_half_size) lor l)
+      else
+        raise Overflow
+    end
+  end
   else begin
-    let al_bl = al*bl in
-    let (h, l) = (al_bl lsr uint_half_size, al_bl land lower_half) in
-    (* This expression does not overflow (at most one of ah×bl and al×bh is
-     * non‐null; and each variable is at most equal to lower_half = 2^{N∕2}−1
-     * where N = uint_size, so that the total is at most equal to
-     * lower_half² + lower_half, which is less than 2^N): *)
-    let h' = ah*bl + al*bh + h in
-    if h' > lower_half then
-      raise Overflow
+    let b = abs b0 in
+    if b <= lower_half then begin
+      let (ah, al) = (a lsr uint_half_size, a land lower_half) in
+      let bl = (b land lower_half) in
+      let al_bl = al*bl in
+      let (h, l) = (al_bl lsr uint_half_size, al_bl land lower_half) in
+      (* This expression does not overflow (same proof): *)
+      let h' = ah*bl + h in
+      if h' <= lower_half then
+        sign (a0 lxor b0) * ((h' lsl uint_half_size) lor l)
+      else
+        raise Overflow
+    end
     else
-      (h' lsl uint_half_size) lor l
+      raise Overflow
   end
 
-let ( *? ) a b =
-  assert (a <> nan) ;
-  assert (b <> nan) ;
-  (* If [a] and [b] are of the same sign: *)
-  if a lxor b >= 0 then begin
-    if a >= 0 then
-      mul_nonneg a b
-    else
-      mul_nonneg ~-a ~-b
-  end else begin
-    if a >= 0 then
-      ~- (mul_nonneg a ~-b)
-    else
-      ~- (mul_nonneg ~-a b)
-  end
 
 let pow =
   Common.pow ~mult:( *? ) ~unit:1
 
 let ediv a b =
-  let q = a / b
-  and r = a mod b in
+  assert (a <> nan) ;
+  assert (b <> nan) ;
+  let q = a / b in
+  let r = a - q * b in
   if r >= 0 then
     (q, r)
-  else begin
-    let s = sign b in
-    (q - s, r + s*b)
-  end
+  else
+    (q - sign b, r + abs b)
+(* NOTE: The implementation below is branchless and thus faster for arbitrary
+ * input numbers, but it is slower when a >= 0, which is the common scenario.
+ * The same remark applies to equo and erem below. *)
+(*
+let ediv a b =
+  assert (a <> nan) ;
+  assert (b <> nan) ;
+  let q = a / b in
+  let r = a - q * b in
+  let u = r asr Sys.int_size in
+  (* u is 0 if r >= 0 and −1 if r < 0 *)
+  (q - (u land sign b), r + (u land abs b))
+*)
 
 let equo a b =
+  assert (a <> nan) ;
+  assert (b <> nan) ;
   let q = a / b in
   if a >= 0 || q*b = a then
     q
@@ -185,6 +182,8 @@ let equo a b =
     q - sign b
 
 let erem a b =
+  assert (a <> nan) ;
+  assert (b <> nan) ;
   let r = a mod b in
   if r >= 0 then
     r
