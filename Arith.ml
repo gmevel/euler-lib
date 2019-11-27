@@ -273,7 +273,9 @@ let isqrt n =
    * Note: Contrary to what one might believe, this floating‐point computation
    * is not correct for all integers below 2^53 (53 bits being the precision of
    * floating‐point numbers). For example, with n = 7865574647205624 = r²−1
-   * where r = 88688075, it incorrectly gives r (instead of r−1). *)
+   * where r = 88688075, it incorrectly gives r (instead of r−1).
+   * See below for an explanation (this shortcut is in fact correct for all
+   * integers below 2^52). *)
   if n <= (1 lsl 30) - 1 then
     truncate@@sqrt@@float n
   (* In the general case, we use a variation of the Babylonian method for
@@ -312,16 +314,46 @@ let isqrt n =
   end
 *)
 
-(* Extensive tests suggest that, for 64‐bit OCaml, the naive floating‐point
- * computation always gives either the correct result, or the correct result
- * plus one, so that the following would be correct. THIS IS NOT PROVEN!
- * It is much faster, about the speed of the floating‐point sqrt itself. *)
-let isqrt =
-  let sqrt_max_int = 1 lsl (uint_size / 2) - 1 in
-fun n ->
+(* The following implementation uses the existing floating-point operation. It
+ * is much faster (about the speed of the floating-point sqrt itself) and its
+ * validity has been checked for all inputs.
+ *
+ * IEEE 754 guarantees that the result of the floating-point sqrt operation is
+ * always equal to the nearest floating-point approximation of the real result.
+ * As a consequence, the sqrt operation is monotonic (as the composition of two
+ * monotonic functions, the real function √· and the approximation function).
+ *
+ * This implies that, in order to check the result of the function sqrt on all
+ * 62-bit integers, it is enough to check it before and after every square
+ * number, ie. to check the result of sqrt(r²−1) and sqrt(r²) for every 31-bit
+ * integer r, which is doable in reasonable time.
+ *
+ * The outcome of this verification is that the floating-point function gives
+ * the exact result for all numbers up to r² − 1 where r = 2^26 + 1. Starting
+ * with this number, it is possible to get one more than the expected result.
+ *
+ * However, we can also verify that no 62-bit integer has an error more than
+ * one. Hence, if the floating-point operation computes a result x, then the
+ * actual square root is either x or x − 1.
+ *
+ * Mathematical insight: by a linear approximation, we have:
+ *     √(r² − 1)  =  r × ( 1 − 1/(2r²) + 𝒪(1/r⁴) )
+ * where the expression has been factored by r, which determines the magnitude
+ * of the number. So the second term has a relative magnitude of 1/(2r²). Yet,
+ * floating-point numbers provide 53 bits of mantissa. So, when 1/(2r²) becomes
+ * smaller than 2^(−53), this term is dropped and we are left with just r. This
+ * happens as soon as r > 2^26. *)
+let isqrt n =
   assert (0 <= n) ;
   let x = truncate@@sqrt@@float n in
-  if x*x <= n && x <= sqrt_max_int then
+  (* We test whether the result of the floating-point calculation is indeed the
+   * square root, ie. whether x² ≤ n. For values of n close to max_int, x is one
+   * more than the square root, and x² overflows, giving min_int. To keep the
+   * test correct even if the presence of an overflow, we write x²−1 < n instead
+   * of x² ≤ n.
+   * The first test is a shortcut for the common case (see the explanation above
+   * for the constant involved). *)
+  if x <= (1 lsl 26) || x*x - 1 < n then
     x
   else
     x - 1
