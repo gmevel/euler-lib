@@ -764,7 +764,7 @@ let miller_rabin_test ~bases n =
   (* Perform the test for each given base. *)
   bases |> List.iter begin fun b ->
     let b = b mod n in
-    let x = ModArith.pow ~modulo:n b m in
+    let x = Modular.pow ~modulo:n b m in
     let exception Strong_probable_prime in
     begin try
       (* Test whether b^m ={n}= ±1. *)
@@ -773,7 +773,7 @@ let miller_rabin_test ~bases n =
       (* Test whether b^{m×2^i} ={n}= −1 for some 1 ≤ i < k. *)
       let x = ref x in
       for _ = 1 to pred k do
-        let y = ModArith.mul ~modulo:n !x !x in
+        let y = Modular.mul ~modulo:n !x !x in
         (* When x² ={n}= 1, we know that n is composite and we can compute
          * factors of n: gcd(n, x − 1) and gcd(n, x + 1) are non‐trivial,
          * coprime factors whose product equals n.
@@ -788,10 +788,10 @@ let miller_rabin_test ~bases n =
          * In practice, those additional tests are very seldom useful when
          * factorizing numbers, so they are commented out. *)
         (*! if y = 1 then !*)
-        (*!   raise (ModArith.Factor_found (Arith.gcd n (!x - 1))) ; !*)
+        (*!   raise (Modular.Factor_found (Arith.gcd n (!x - 1))) ; !*)
         (*! if y = n-1 && !x <> !r && !x <> n - !r then !*)
         (*!   if !r = 0 then r := !x else !*)
-        (*!     raise (ModArith.Factor_found (Arith.gcd n (!x - !r))) ; !*)
+        (*!     raise (Modular.Factor_found (Arith.gcd n (!x - !r))) ; !*)
         x := y ;
         if y = n-1 then
           raise Strong_probable_prime
@@ -981,7 +981,7 @@ let is_prime = is_prime_aux ~first_primes:primes_under_100
 module Make_EllipticCurve (M : sig val modulo : int end) = struct
 
   (* The ring ℤ∕nℤ. *)
-  module M = ModArith.Make (M)
+  module M = Modular.Make (M)
 
   (* The type of a point of an elliptic curve. *)
   type point =
@@ -1067,7 +1067,7 @@ let lenstra_find_factor ~tries ~max_fact n =
       done
     done ;
     raise Not_found
-  with ModArith.Factor_found d ->
+  with Modular.Factor_found d ->
     d
   end
 

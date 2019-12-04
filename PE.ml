@@ -1,11 +1,13 @@
-module Common = Common
+include Common
 
 module Arith = Arith
 
-module ModArith = ModArith
+module Modular = Modular
 
-module Primality = Primality
+module Primes = Primes
 
 module Farey = Farey
 
-module ZCommon = ZCommon
+module Z = struct
+  include ZCommon
+end
