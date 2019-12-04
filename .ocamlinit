@@ -15,9 +15,9 @@ with Not_found -> () end
 #require "containers" ;;
 #require "zarith" ;;
 
-(* Load PE. *)
-#directory "_build/install/default/lib/pe/" ;;
-#load_rec "PE.cma" ;;
-Printf.printf "pe is loaded\n" ;;
+(* Load Euler. *)
+#directory "_build/install/default/lib/euler/" ;;
+#load_rec "Euler.cma" ;;
+Printf.printf "euler is loaded\n" ;;
 
 Sys.interactive := interactive ;;

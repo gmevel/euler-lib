@@ -1,4 +1,4 @@
 (lang dune 1.1)
 
-(name     pe)
+(name     euler)
 (version  0.0)

@@ -1,6 +1,6 @@
 opam-version: "1.2"
 
-name:        "pe"
+name:        "euler"
 version:     "0.0"
 license:     "WTFPL"
 author:      "Glen Mével <glen.mevel@crans.org>"

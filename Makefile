@@ -19,7 +19,7 @@ clean:
 	dune clean
 
 install: lib
-	ocamlfind remove pe
+	ocamlfind remove euler
 	dune install
 
 # example Makefile for dune:
