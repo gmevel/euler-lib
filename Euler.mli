@@ -404,6 +404,37 @@ end (* module Modular *)
 (******************************************************************************)
 (******************************************************************************)
 
+module Diophantine : sig
+  (** Solving diophantine equations, {i i.e.} equations on integers. *)
+
+  (****************************************************************************)
+
+  (** Raised when a system has no solution. *)
+  exception No_solution
+
+      (*! \{ {i !*)
+      (*!   a{_1} · x ≡{_m{_1}} b{_1} ; !*)
+      (*!   … ; !*)
+      (*!   a{_k} · x ≡{_m{_k}} b{_k} !*)
+      (*! } \} !*)
+
+  (** [solve_congruences [ (a1, b1, m1) ; … ; (ak, bk, mk) ]], provided that the
+      {i m{_i}} are non-zero, solves the following linear congruence system of
+      unknown {i x}:
+      - {i a{_1} · x ≡{_m{_1}} b{_1} }
+      - {i … }
+      - {i a{_k} · x ≡{_m{_k}} b{_k} }
+      @return a pair [(x, m)] where 0 ≤ {i x} < {i m}, which represents the set
+        of solutions {i x} + {i m}ℤ,
+      @raise No_solution if there are no solutions.
+  *)
+  val solve_congruences : (int * int * int) list -> int * int
+
+end (* module Diophantine *)
+
+(******************************************************************************)
+(******************************************************************************)
+
 module Primes : sig
   (** Prime numbers and integer factorization. *)
 
