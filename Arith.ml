@@ -159,9 +159,6 @@ let div_exact a b =
   else
     raise Division_not_exact
 
-let pow =
-  Common.pow ~mult:mul ~unit:1
-
 let ediv a b =
   assert (a <> nan) ;
   assert (b <> nan) ;
@@ -202,6 +199,9 @@ let erem a b =
     r
   else
     r + abs b
+
+let pow =
+  Common.pow ~mult:mul ~unit:1
 
 (* This implementation is only valid for systems where native unsigned integers
  * are at most 53 bits (including 32‐bit OCaml). See comments below. *)

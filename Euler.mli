@@ -132,12 +132,6 @@ module Arith : sig
       divisor. *)
   val div_exact : int -> int -> int
 
-  (** Overflowing integer exponentiation. [pow a n] is [a] to the power [n],
-      provided that [n] is non‐negative.
-      {b Complexity:} 𝒪(log([n])) integer multiplications.
-      @raise Overflow when the result exceeds the range of overflowing integers. *)
-  val pow : int -> int -> int
-
   (** [ediv a b] is the Euclidean division of [a] by [b]; it returns [(q, r)]
       such that [a] = [b]×[q] + [r] and 0 ≤ [r] < [b].
       @raise Division_by_zero when [b] is null. *)
@@ -165,6 +159,12 @@ module Arith : sig
       @raise Division_by_zero when [d] is null.
       @raise Overflow as described. *)
   val mul_quo : int -> int -> int -> int
+
+  (** Overflowing integer exponentiation. [pow a n] is [a] to the power [n],
+      provided that [n] is non‐negative.
+      {b Complexity:} 𝒪(log([n])) integer multiplications.
+      @raise Overflow when the result exceeds the range of overflowing integers. *)
+  val pow : int -> int -> int
 
   (** [log2sup n] is the number of binary digits of [n], provided that [n] is
       non‐negative. In other words, it is the unique integer [k] such that
