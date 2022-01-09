@@ -363,16 +363,19 @@ module Modular : sig
     val to_int : t -> int
     (** Conversions to and from integers. *)
 
+    (** A prefix alias for [of_int]. *)
+    val ( ~$ ) : int -> t
+
     (** Modular opposite. *)
     val opp : t -> t
 
-    (** An infix alias for [opp]. *)
+    (** A prefix alias for [opp]. *)
     val ( ~-: ) : t -> t
 
     (** Modular inverse. *)
     val inv : t -> t
 
-    (** An infix alias for [inv]. *)
+    (** A prefix alias for [inv]. *)
     val ( ~/: ) : t -> t
 
     (** Modular addition. *)

@@ -150,7 +150,8 @@ fun a b ->
     a *: gcdext m b 1 0 0 1
 
 let pow ~modulo:m =
-  assert (m <> 1) ; (* FIXME For [m] = 1, this does not give canonical values. *)
+  (* For [m] = 1, [pow] does not give canonical values: *)
+  if m = 1 then (fun _a _n -> 0) else
   let pow = Common.pow ~mult:(mul ~modulo:m) ~unit:1
   and inv = inv ~modulo:m in
 fun a n ->
@@ -179,6 +180,7 @@ module Make (M : sig val modulo : int end) = struct
 
   let of_int a =
     Arith.erem a modulo
+  let ( ~$ ) = of_int
 
   let to_int a =
     a
