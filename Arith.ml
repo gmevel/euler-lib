@@ -373,6 +373,27 @@ let isqrt n =
   else
     x - 1
 
+(* The below implementation of [icbrt] has been verified for all 63-bit integers
+ * with the same method as for [isqrt], i.e. based on the fact that the function
+ * [fun x -> x ** (1./.3.)] is monotonic (which seems reasonable, but I haven’t
+ * checked). *)
+let icbrt n =
+  let s = sign n
+  and n = abs n in
+  let x = truncate (float n ** (1./.3.)) in
+  let next_cube = (x+1)*(x+1)*(x+1) in
+  (* [(x+1)³] overflows only when [x³] is the largest representable cube; then
+   * [x³ < 2^(int_size−1) ≤ (x+1)³ < 2^int_size], because [((x+1)/x)³ < 2] as
+   * soon as [x ≥ 4]. So, provided that we have wrapping integers with
+   * [int_size ≥ 7], [(x+1)³] appears to be negative, and we can detect an
+   * overflow just by looking at its sign.
+   * By contrast with [isqrt], an off-by-one error happens pretty quick, as soon
+   * as n = 4³ = 64, so there is no point in shortcutting the test. *)
+  if n < next_cube || next_cube < 0 then
+    s * x
+  else
+    s * (x+1)
+
 let rec gcd a b =
   if b = 0 then
     abs a

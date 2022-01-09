@@ -178,6 +178,11 @@ module Arith : sig
       [r]² ≤ [n], that is, ⌊√[n]⌋. *)
   val isqrt : int -> int
 
+  (** [icbrt n] is the integer cube root of [n], rounded towards zero.
+      In other words, it is [sign n * r] where [r] is the greatest integer such
+      that [r]³ ≤ |[n]|. *)
+  val icbrt : int -> int
+
   (****************************************************************************)
 
   (** {2 Divisors and multiples } *)
