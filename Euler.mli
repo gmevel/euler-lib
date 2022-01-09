@@ -1,4 +1,4 @@
-(** This is a library for arithmetic algorithms, primarily developped to solve
+(** This is a library for arithmetic algorithms, primarily developed to solve
     {{: https://projecteuler.net} Project Euler} problems.
  *)
 
@@ -27,7 +27,7 @@ val pow : mult:('a -> 'a -> 'a) -> unit:'a -> 'a -> int -> 'a
 (** Memoizing fixpoint combinator.
     Example use:
 {[
-    let fib = memoized_fix\@\@fun fib n ->
+    let fib = memoized_fix@@fun fib n ->
       if n < 2 then
         1
       else
@@ -44,22 +44,22 @@ module Arith : sig
   (** Arithmetic on overflowing integers.
 
       All operations defined here act on overflowing integers. An overflowing
-      integer is any native integer (type [int]) except [min_int]. Otherwise
-      said, they are the integers whose absolute value is at most
+      integer is any native integer (type [int]) except [Stdlib.min_int].
+      Otherwise said, they are the integers whose absolute value is at most
       [max_int] = 2{^[int_size]−1} − 1. This makes the range of overflowing
       integers symmetrical, so that computing the opposite [( ~- )] or the
       absolute value [abs] never overflows (the presence of an additional value
       2{^[int_size]−1} being arbitrarily interpreted as a negative value fits
       the modulo semantics of integers, but is alien to an overflowing
-      semantics). This allows to use [min_int] as a special value, for example
-      to signal that an overflow occured. Here, we rather raise an exception for
-      that purpose. All functions in this library may fail when given [min_int]
-      where an overflowing integer was expected.
+      semantics). This allows to use [Stdlib.min_int] as a special value, for
+      example to signal that an overflow occurred. Here, we rather raise an
+      exception for that purpose. All functions in this library may fail when
+      given [Stdlib.min_int] where an overflowing integer was expected.
 
       All operations defined here either are free of overflows, or raise
       [Overflow] when their {e result} would exceed the range of overflowing
       integers (and only in that case). Functions which can overflow are
-      signaled explicitely in this documentation.
+      signaled explicitly in this documentation.
 
       Functions in this library may raise [Assert_failure], instead of the more
       traditional [Invalid_argument], when some precondition is not met. This is
@@ -74,10 +74,11 @@ module Arith : sig
 
   (****************************************************************************)
 
-  (** The largest representable integer. This is [Pervasives.max_int]. *)
+  (** The largest representable integer. This is [Stdlib.max_int]. *)
   val max_int : int
 
-  (** The smallest representable integer. This is the opposite of [max_int]. *)
+  (** The smallest representable integer. This is the opposite of [max_int],
+      and differs from [Stdlib.min_int]. *)
   val min_int : int
 
   (** Raised when the result of an operation exceeds the range of overflowing
@@ -96,7 +97,7 @@ module Arith : sig
       null. *)
   val sign : int -> int
 
-  (** Absolute value. By contrast with [Pervasives.abs], it cannot overflow. *)
+  (** Absolute value. By contrast with [Stdlib.abs], it cannot overflow. *)
   val abs : int -> int
 
   (** Minimum of two integers. *)
@@ -107,10 +108,10 @@ module Arith : sig
 
   (** [compare a b] returns [0] when [a] is equal to [b], a negative integer
       when [a] is smaller than [b], and a positive integer when [a] is greater
-      than [b]. It is the same as [Pervasives.compare] but much faster. *)
+      than [b]. It is the same as [Stdlib.compare] but much faster. *)
   val compare : int -> int -> int
 
-  (** Integer opposite. This is the same as [( ~- )]. It cannot overflow. *)
+  (** Integer opposite. This is the same as [Stdlib.(~-)]. It cannot overflow. *)
   val ( ~-? ) : int -> int
 
   (** Overflowing integer addition.
@@ -285,13 +286,13 @@ module Modular : sig
   (** Modular inverse. [inv ~modulo:m a] is the unique element [a'] of ℤ∕[m]ℤ
       such that [a']×[a] = 1, if it exists.
       {b Complexity:} 𝒪(log([a])) = 𝒪(log([m])) ([a] being under canonical form).
-      @raise Division_by_zero when [a] is not inversible. *)
+      @raise Division_by_zero when [a] is not invertible. *)
   val inv : modulo:int -> int -> int
 
   (** Modular addition. *)
   val add : modulo:int -> int -> int -> int
 
-  (** Modular substraction. *)
+  (** Modular subtraction. *)
   val sub : modulo:int -> int -> int -> int
 
   (** Modular multiplication.
@@ -302,13 +303,14 @@ module Modular : sig
   (** Modular division. [div ~modulo:m a b] is the unique element [c] of ℤ∕[m]ℤ
       such that [c]×[b] = [a], if it exists.
       {b Complexity:} 𝒪(log([b])) = 𝒪(log([m])) ([b] being under canonical form).
-      @raise Division_by_zero when [b] is not inversible. *)
+      @raise Division_by_zero when [b] is not invertible. *)
   val div : modulo:int -> int -> int -> int
 
   (** A more general modular division, which does not assume its right operand
-      to be inversible. [div_nonunique ~modulo:m a b] is an element [c] such
-      that [c]×[b] = [a], if there exists one. The result is defined modulo
-      [m] ∕ gcd([m], [b]); it is unique only when [b] is inversible.
+      to be invertible. [div_nonunique ~modulo:m a b] is an element [c] such
+      that [c]×[b] = [a], if there exists one. There exists such an element iff
+      [a] is a multiple of gcd([m], [b]), in which case the result is defined
+      modulo [m] ∕ gcd([m], [b]); it is unique only when [b] is invertible.
       For example, modulo 10, 3×4 = 8×4 = 2, so 2 divided by 4 may be 3 or 8
       (this example shows that the division 2 ∕ 4 cannot be simplified to 1 ∕ 2).
       {b Complexity:} 𝒪(log([b])) = 𝒪(log([m])) ([b] being under canonical form).
@@ -319,10 +321,10 @@ module Modular : sig
 
   (** A version of the modular division specialized for factorization purposes.
       [div_factorize ~modulo:m a b] is similar to [div ~modulo:m a b] but handles
-      more precisely the cases when [b] is not inversible.
+      more precisely the cases when [b] is not invertible.
       {b Complexity:} 𝒪(log([b])) = 𝒪(log([m])) ([b] being under canonical form).
       @raise Division_by_zero when [b] is zero.
-      @raise Factor_found when [b] is non‐zero and not inversible; in this case,
+      @raise Factor_found when [b] is non‐zero and not invertible; in this case,
       gcd([m],[b]) is a non‐trivial factor of [m], which is returned as the
       parameter of the exception [Factor_found].
   *)
@@ -332,7 +334,7 @@ module Modular : sig
       [a]{^[n]} in the ring ℤ∕[m]ℤ; when [n] is negative, it is [a']{^−[n]} where
       [a'] is the modular inverse of [a].
       {b Complexity:} 𝒪(log([m])×log(|[n]|)).
-      @raise Division_by_zero when [n] is negative and [a] is not inversible. *)
+      @raise Division_by_zero when [n] is negative and [a] is not invertible. *)
   val pow : modulo:int -> int -> int -> int
 
   (** [rand ~modulo:m ()] draws a random element of the ring ℤ∕[m]ℤ, with the
@@ -377,7 +379,7 @@ module Modular : sig
     (** Modular addition. *)
     val ( +: ) : t -> t -> t
 
-    (** Modular substraction. *)
+    (** Modular subtraction. *)
     val ( -: ) : t -> t -> t
 
     (** Modular multiplication. *)
@@ -411,12 +413,6 @@ module Diophantine : sig
 
   (** Raised when a system has no solution. *)
   exception No_solution
-
-      (*! \{ {i !*)
-      (*!   a{_1} · x ≡{_m{_1}} b{_1} ; !*)
-      (*!   … ; !*)
-      (*!   a{_k} · x ≡{_m{_k}} b{_k} !*)
-      (*! } \} !*)
 
   (** [solve_congruences [ (a1, b1, m1) ; … ; (ak, bk, mk) ]], provided that the
       {i m{_i}} are non-zero, solves the following linear congruence system of
@@ -458,7 +454,7 @@ module Primes : sig
   *)
 
   (** The logarithmic integral function. It is defined only for numbers
-      (stricly) greater than [1.0].
+      (strictly) greater than [1.0].
       @param precision The series summation stops as soon as the increment
         becomes smaller than [precision]. *)
   val li : ?precision:float -> float -> float
