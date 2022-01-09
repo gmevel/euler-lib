@@ -76,13 +76,13 @@ let compare a b =
   (s land (a lor 1)) lor (lnot s land (a-b))
 *)
 
-let ( ~-? ) = ( ~- )
+let opp = ( ~- )
 
 (* Number of bits of an unsigned integer (OCaml integers are one bit less than
  * machine words, and there is one sign bit). *)
 let uint_size = Sys.int_size - 1
 
-let ( +? ) a b =
+let add a b =
   assert (a <> nan) ;
   assert (b <> nan) ;
   let s = a + b in
@@ -91,7 +91,7 @@ let ( +? ) a b =
   else
     raise Overflow
 
-let ( -? ) a b =
+let sub a b =
   assert (a <> nan) ;
   assert (b <> nan) ;
   let d = a - b in
@@ -100,7 +100,7 @@ let ( -? ) a b =
   else
     raise Overflow
 
-let ( *? ) =
+let mul =
   let uint_half_size = uint_size / 2 in
   let lower_half = (1 lsl uint_half_size) - 1 in
 fun a0 b0 ->
@@ -144,8 +144,23 @@ fun a0 b0 ->
       raise Overflow
   end
 
+(* We don’t override the standard unsafe operators right now because we still
+ * want to use them in this file, but in some parts we’ll need the safe
+ * operations, so here we define local notations for them. *)
+let ( +? ) = add
+let ( -? ) = sub
+let ( *? ) = mul
+
+let div_exact a b =
+  assert (a <> nan) ;
+  assert (b <> nan) ;
+  if a mod b = 0 then
+    a / b
+  else
+    raise Division_not_exact
+
 let pow =
-  Common.pow ~mult:( *? ) ~unit:1
+  Common.pow ~mult:mul ~unit:1
 
 let ediv a b =
   assert (a <> nan) ;
@@ -622,6 +637,21 @@ let rand ?(min=0) ?(max=max_int) () =
 let rand_signed ?(max=max_int) () =
   assert (0 <= max) ;
   rand ~min:(~- max) ~max ()
+
+let ( ~- ) = opp
+let ( + ) = add
+let ( - ) = sub
+let ( * ) = mul
+let ( / ) = div_exact
+let ( // ) = equo
+let ( /% ) = erem
+let ( mod ) = erem
+
+module Unsafe = struct
+  let ( +! ) = Stdlib.( + )
+  let ( -! ) = Stdlib.( - )
+  let ( *! ) = Stdlib.( * )
+end
 
 
 

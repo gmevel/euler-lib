@@ -112,19 +112,25 @@ module Arith : sig
   val compare : int -> int -> int
 
   (** Integer opposite. This is the same as [Stdlib.(~-)]. It cannot overflow. *)
-  val ( ~-? ) : int -> int
+  val opp : int -> int
 
   (** Overflowing integer addition.
       @raise Overflow when the result exceeds the range of overflowing integers. *)
-  val ( +? ) : int -> int -> int
+  val add : int -> int -> int
 
   (** Overflowing integer subtraction.
       @raise Overflow when the result exceeds the range of overflowing integers. *)
-  val ( -? ) : int -> int -> int
+  val sub : int -> int -> int
 
   (** Overflowing integer multiplication.
       @raise Overflow when the result exceeds the range of overflowing integers. *)
-  val ( *? ) : int -> int -> int
+  val mul : int -> int -> int
+
+  (** Exact integer division. By contrast with [Stdlib.(/)], it cannot overflow.
+      @raise Division_by_zero when the divisor is null.
+      @raise Division_not_exact when the dividend is not a multiple of the
+      divisor. *)
+  val div_exact : int -> int -> int
 
   (** Overflowing integer exponentiation. [pow a n] is [a] to the power [n],
       provided that [n] is non‐negative.
@@ -254,6 +260,56 @@ module Arith : sig
   (** [rand_signed ~max ()] draws a random integer with the uniform distribution,
       with an absolute value at most [max]. [max] must be non-negative. *)
   val rand_signed : ?max:int -> unit -> int
+
+  (****************************************************************************)
+
+  (** {2 Operators }
+
+      We deliberately override the standard operators. This is to make sure we
+      don’t write unsafe arithmetic by accident.
+  *)
+
+  (** Prefix notation for [opp]. *)
+  val ( ~- ) : int -> int
+
+  (** Infix notation for [add]. *)
+  val ( + ) : int -> int -> int
+
+  (** Infix notation for [sub]. *)
+  val ( - ) : int -> int -> int
+
+  (** Infix notation for [mul]. *)
+  val ( * ) : int -> int -> int
+
+  (** Infix notation for [div_exact]. Note that this is more restrictive than
+      the usual division from the standard library; this forces us to realize
+      when we are doing a non-exact division, for which we must write [//]. *)
+  val ( / ) : int -> int -> int
+
+  (** Infix notation for [equo]. Note that this is not the same as [Stdlib.(/)]
+      when the dividend is negative. *)
+  val ( // ) : int -> int -> int
+
+  (** Infix notation for [erem]. Same remark as for [//]. We don’t use (%)
+      because we likely want that symbol to be available for other things (e.g.
+      for function composition). *)
+  val ( /% ) : int -> int -> int
+
+  (** Same. *)
+  val ( mod ) : int -> int -> int
+
+  (** Module [Unsafe] gives access to the old operations for when we know what
+      we are doing (i.e. we know that a given operation cannot overflow) and we
+      absolutely don’t want to pay for the overhead of the safe functions.
+      Operators in that module are suffixed with a [!] so as to distinguish them
+      clearly. *)
+  module Unsafe : sig
+
+    val ( +! ) : int -> int -> int
+    val ( -! ) : int -> int -> int
+    val ( *! ) : int -> int -> int
+
+  end (* module Unsafe *)
 
 end (* module Arith *)
 

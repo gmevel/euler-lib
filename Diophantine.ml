@@ -26,7 +26,7 @@ let solve_2_congruences (a, m) (b, n) =
   let (c, r) = Arith.ediv (b - a) d in
   if r <> 0 then
     raise No_solution ;
-  let p = Arith.(m / d *? n) in
+  let p = Arith.mul (m / d) n in
   (* a is already canonical modulo m, hence also modulo p: *)
   (*! let a = Arith.erem a p in !*)
   (* Since |c| < max(m, n) ≤ p, the canonical form of c modulo p is c if c ≥ 0,
