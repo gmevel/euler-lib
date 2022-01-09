@@ -838,7 +838,7 @@ let is_probably_prime ?(rounds=10) n =
     false
   else begin
     (* we pick random bases between 2 and n−2, inclusive: *)
-    let bases = List.init rounds (fun _ -> Arith.rand ~min:2 ~max:(n-1)) in
+    let bases = List.init rounds (fun _ -> Arith.rand ~min:2 ~max:(n-2) ()) in
     begin match miller_rabin_test ~bases n with
     | ()                  -> true  (* strong probable prime *)
     | exception Prime     -> true  (* definitely prime *)

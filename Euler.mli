@@ -247,14 +247,13 @@ module Arith : sig
   (** {2 Randomness } *)
 
   (** [rand ~min ~max ()] draws a random integer with the uniform distribution
-      between [min] (inclusive) and [max] (exclusive). [max] must be (strictly)
-      greater than [min]. [min] defaults to 0. *)
-  val rand : ?min:int -> max:int -> unit -> int
+      between [min] and [max] (inclusive). [max] must be greater than or equal
+      to [min]. [min] defaults to 0, [max] defaults to [max_int]. *)
+  val rand : ?min:int -> ?max:int -> unit -> int
 
   (** [rand_signed ~max ()] draws a random integer with the uniform distribution,
-      with an absolute value (strictly) less than [max]. [max] must be
-      a positive integer. *)
-  val rand_signed : max:int -> unit -> int
+      with an absolute value at most [max]. [max] must be non-negative. *)
+  val rand_signed : ?max:int -> unit -> int
 
 end (* module Arith *)
 

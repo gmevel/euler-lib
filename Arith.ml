@@ -612,16 +612,16 @@ let central_binom p =
  *     https://fishi.devtail.io/weblog/2015/06/25/computing-large-binomial-coefficients-modulo-prime-non-prime/
  *)
 
-let rand ?(min=0) ~max () =
-  assert (min < max) ;
+let rand ?(min=0) ?(max=max_int) () =
+  assert (min <= max) ;
   let min = Int64.of_int min
   and max = Int64.of_int max in
-  let r = Random.int64 (Int64.sub max min) in
+  let r = Random.int64 (Int64.sub (Int64.succ max) min) in
   Int64.to_int @@ Int64.add min r
 
-let rand_signed ~max:abs_max () =
-  assert (0 < abs_max) ;
-  rand ~min:(1 - abs_max) ~max:abs_max ()
+let rand_signed ?(max=max_int) () =
+  assert (0 <= max) ;
+  rand ~min:(~- max) ~max ()
 
 
 
