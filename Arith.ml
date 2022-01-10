@@ -348,6 +348,53 @@ let log2sup =
   else
     assert false
 
+(* By picking a good initial estimation for the logarithm, our implementation is
+ * likely much faster than the naive implementation (not checked thoroughly). *)
+let logsup ?(base=10) n =
+  assert (2 <= base) ;
+  assert (0 <= n) ;
+  if n <> 0 then begin
+    (* Below is an excellent estimation, which also gives 0 for n=0, but:
+    *  (1) I’m not sure whether the estimation is always below the result;
+    *  (2) as we use float operations, it needs benchmarking. *)
+    (*! let l_est = truncate (log (float (n+1)) /. log (float base)) in !*)
+    (* Below is a more conservative under-estimation, proven correct; I could
+     * also prove the associated over-estimation, shown below in a comment, and:
+     *     l_overest ≤ 2 × l_underest        for any base
+     *     l_overest ≤ 3/2 × l_underest + 1  for base ≥ 4
+     *     l_overest ≤ 4/3 × l_underest + 1  for base ≥ 8
+     *     l_overest ≤ 5/4 × l_underest + 1  for base ≥ 16
+     *     …
+     * which is not satisfying because a priori we might still do O(l_underest)
+     * iterations from the initial estimation; however quick tests with base=3
+     * seem to suggest that in practice, we iter much less than that(?). *)
+    let l_underest = (log2sup n - 1) / log2sup (base-1) + 1 in
+    (*! let l_overest = log2sup (n-1) / (log2sup base - 1) + 1 in !*)
+    begin match pow base l_underest with
+    | p ->
+        (* Divisions are costly, we rather do repeated multiplications than
+         * repeated divisions; we still need one division for overflow control,
+         * though: *)
+        let stop = min n (max_int / base) in
+        let p = ref p in
+        let l = ref l_underest in
+        (* invariant: p = base^l *)
+        while !p <= stop do
+          p := !p * base ; (* we carefully avoid overflowing here *)
+          incr l ;
+        done ;
+        if !p > n then !l else !l + 1
+    | exception Overflow -> l_underest
+    end
+  end
+  else 0
+
+let log2 n =
+  log2sup n - 1
+
+let log ?base n =
+  logsup ?base n - 1
+
 (* The following implementation of the integer square root is guaranteed
  * correct, but is MUCH slower than a naive floating‐point computation. *)
 (*

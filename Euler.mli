@@ -190,7 +190,7 @@ module Arith : sig
   val mul_quo : int -> int -> int -> int
 
   (** Overflowing integer exponentiation. [pow a n] is [a] to the power [n],
-      provided that [n] is non‐negative.
+      provided that [n] is non‐negative. Of course, 0{^ 0} = 1.
       {b Complexity:} 𝒪(log([n])) integer multiplications.
       @raise Overflow when the result exceeds the range of overflowing integers. *)
   val pow : int -> int -> int
@@ -204,11 +204,31 @@ module Arith : sig
       {b Complexity:} 𝒪(1). *)
   val powm1 : int -> int
 
-  (** [log2sup n] is the number of binary digits of [n], provided that [n] is
-      non‐negative. In other words, it is the unique integer [k] such that
-      2{^[k]−1} ≤ [n] < 2{^[k]}.
-      @return 0 when [n] = 0.
-  *)
+  (** [log ~base n] is the logarithm of [n] in base [base] rounded towards zero,
+      provided that [base] is at least 2 and that [n] is non‐negative.
+      In other words, it returns ⌊ln([n])∕ln([base])⌋,
+      This is the unique integer [k] such that [base]{^[k]} ≤ [n] < [base]{^[k]+1}.
+      The default base is 10.
+      {b Complexity:} 𝒪(log(log([n]))) integer multiplications.
+      @return −1 when [n] = 0. *)
+  val log : ?base:int -> int -> int
+
+  (** [log2 n] is equivalent to [log ~base:2 n] but faster.
+      @return −1 when [n] = 0. *)
+  val log2 : int -> int
+
+  (** [logsup ~base n] is the number of digits of [n] in base [base], provided
+      that [base] is at least 2 and that [n] is non‐negative.
+      It is equal to ⌈ln([n]+1)∕ln([base])⌉
+      and also (when [n] is not null) to ⌊ln([n])∕ln([base])⌋ + 1.
+      This is the unique integer [k] such that [base]{^[k]−1} ≤ [n] < [base]{^[k]}.
+      The default base is 10.
+      {b Complexity:} 𝒪(log(log([n]))) integer multiplications.
+      @return 0 when [n] = 0. *)
+  val logsup : ?base:int -> int -> int
+
+  (** [log2sup n] is equivalent to [logsup ~base:2 n] but faster.
+      @return 0 when [n] = 0. *)
   val log2sup : int -> int
 
   (** [isqrt n] is the integer square root of [n], provided that [n] is
