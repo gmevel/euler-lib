@@ -583,7 +583,8 @@ let is_square =
    *
    * We use a single native integer to store the lookup table. The same code
    * works for 32-bit and 64-bit OCaml, because of two facts:
-   *   - [1 lsl n] is the same as [1 lsl (n mod word_size)];
+   *   - [1 lsl n] is the same as [1 lsl (n mod word_size)] (the OCaml manual
+   *     states it is unspecified, but this is what happens in practice);
    *   - a square modulo 64 is also a square modulo 32 and, conversely, every
    *     square modulo 32 is the residue of a square modulo 64.
    * The test can easily be extended to larger powers of 2, but squares modulo
