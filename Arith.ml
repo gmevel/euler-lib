@@ -29,6 +29,16 @@ let sign a =
 let sign a =
   compare a 0
 
+(* This is a free generalization of [abs] and should be very fast (although not
+ * benchmarked). *)
+let mul_sign s n =
+  let u = s asr Sys.int_size in
+  n lxor u - u
+
+let mul_sign0 s n =
+  let u = s asr Sys.int_size in
+  (n lxor u - u) land ((s lxor (-s)) asr Sys.int_size)
+
 (*
 let abs = abs
 *)
@@ -151,6 +161,23 @@ let ( +? ) = add
 let ( -? ) = sub
 let ( *? ) = mul
 
+let mul2 a =
+  assert (a <> nan) ;
+  (* This does not raise [Overflow] when [a = Stdlib.min_int/2] but rather it
+   * returns [Stdlib.min_int]; oh well… *)
+  if a lxor (a lsl 1) >= 0 then
+    a lsl 1
+  else
+    raise Overflow
+
+let mul_pow2 k a =
+  assert (0 <= k) ;
+  assert (a <> nan) ;
+  if abs a lsr max 0 (uint_size - k) = 0 then
+    a lsl k
+  else
+    raise Overflow
+
 let div_exact a b =
   assert (a <> nan) ;
   assert (b <> nan) ;
@@ -200,8 +227,53 @@ let erem a b =
   else
     r + abs b
 
+let ediv2 a =
+  (a asr 1, a land 1)
+
+let equo2 a =
+  a asr 1
+
+let erem2 a =
+  a land 1
+
+let ediv_pow2 a k =
+  assert (a <> nan) ;
+  assert (0 <= k) ;
+  (* [a asr uint_size] gives 0 if [a] ≥ 0 and −1 if [a] < 0 *)
+  if k <= uint_size then
+    (a asr k, a land ((1 lsl k) - 1))
+  else if a >= 0 then
+    (0, a)
+  else
+    raise Overflow
+
+let equo_pow2 a k =
+  assert (a <> nan) ;
+  assert (0 <= k) ;
+  a asr (min k uint_size)
+
+let erem_pow2 a k =
+  assert (a <> nan) ;
+  assert (0 <= k) ;
+  if k <= uint_size then
+    a land ((1 lsl k) - 1)
+  else if a >= 0 then
+    a
+  else
+    raise Overflow
+
 let pow =
   Common.pow ~mult:mul ~unit:1
+
+let pow2 k =
+  assert (0 <= k) ;
+  if k < uint_size then
+    1 lsl k
+  else
+    raise Overflow
+
+let powm1 k =
+  1 - ((k land 1) lsl 1)
 
 (* This implementation is only valid for systems where native unsigned integers
  * are at most 53 bits (including 32‐bit OCaml). See comments below. *)
@@ -564,7 +636,7 @@ let jacobi a n =
     rn := a
   done ;
   if !rn = 1 then
-    1 - ((!acc land 1) lsl 1)
+    powm1 !acc
   else
     0
 

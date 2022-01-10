@@ -93,9 +93,17 @@ module Arith : sig
 
   (** {2 Base operations } *)
 
-  (** [sign a] is +1 if [a] is positive, −1 if [a] is negative, or 0 if [a] is
-      null. *)
+  (** [sign a] is +1 if [a] is positive, 0 if it is null, and −1 if it is
+      negative. *)
   val sign : int -> int
+
+  (** [mul_sign s n] is [n] if [s] is non-negative and −[n] otherwise. *)
+  val mul_sign : int -> int -> int
+
+  (** [mul_sign s n] is [n] if [s] is positive, 0 if it is null, and −[n] if it
+      is negative.
+      In other words, it is equivalent to [mul (sign s) a], but much faster. *)
+  val mul_sign0 : int -> int -> int
 
   (** Absolute value. By contrast with [Stdlib.abs], it cannot overflow. *)
   val abs : int -> int
@@ -126,6 +134,14 @@ module Arith : sig
       @raise Overflow when the result exceeds the range of overflowing integers. *)
   val mul : int -> int -> int
 
+  (** [mul2 a] is equivalent to [mul 2 a] but much faster.
+      @raise Overflow when the result exceeds the range of overflowing integers. *)
+  val mul2 : int -> int
+
+  (** [mul_pow2 k a] is equivalent to [mul (pow2 k) a] but much faster.
+      @raise Overflow when the result exceeds the range of overflowing integers. *)
+  val mul_pow2 : int -> int -> int
+
   (** Exact integer division. By contrast with [Stdlib.(/)], it cannot overflow.
       @raise Division_by_zero when the divisor is null.
       @raise Division_not_exact when the dividend is not a multiple of the
@@ -144,6 +160,19 @@ module Arith : sig
   (** [erem a b] is the remainder of the Euclidean division of [a] by [b].
       @raise Division_by_zero when [b] is null. *)
   val erem : int -> int -> int
+
+  (** Faster alternatives when the divisor is 2. *)
+  val ediv2 : int -> int * int
+  val equo2 : int -> int
+  val erem2 : int -> int
+
+  (** Faster alternatives when the divisor is a power of 2.
+      [ediv_pow2 a k] is equivalent to [ediv a (pow2 k)].
+      @raise Overflow when the remainder exceeds the range of overflowing
+      integers (happens only when [a] < 0 and [pow2 k] overflows). *)
+  val ediv_pow2 : int -> int -> int * int
+  val equo_pow2 : int -> int -> int
+  val erem_pow2 : int -> int -> int
 
   (** [mul_div_exact a b d] computes [a]×[b]∕[d] when [d] does divide [a]×[b].
       @raise Division_by_zero when [d] is null.
@@ -165,6 +194,15 @@ module Arith : sig
       {b Complexity:} 𝒪(log([n])) integer multiplications.
       @raise Overflow when the result exceeds the range of overflowing integers. *)
   val pow : int -> int -> int
+
+  (** [pow2 n] is equivalent to [pow 2 n], but much faster.
+      {b Complexity:} 𝒪(1).
+      @raise Overflow when the result exceeds the range of overflowing integers. *)
+  val pow2 : int -> int
+
+  (** [powm1 n] is equivalent to [pow (-1) n], but much faster.
+      {b Complexity:} 𝒪(1). *)
+  val powm1 : int -> int
 
   (** [log2sup n] is the number of binary digits of [n], provided that [n] is
       non‐negative. In other words, it is the unique integer [k] such that
