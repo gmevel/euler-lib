@@ -1003,7 +1003,7 @@ module Make_EllipticCurve (M : sig val modulo : int end) = struct
           assert (xp <> xq) ;
           (* Note: xq−xp is never zero, hence either the division succeeds or a
            * non‐trivial factor is found. *)
-          let s = M.(div_factorize (yq -: yp) (xq -: xp)) in
+          let s = M.((yq -: yp) *: inv_factorize (xq -: xp)) in
           let t = M.(yp -: s*:xp) in
           let xr = M.(s*:s -: xp -: xq) in
           let yr = M.(~-: s*:xr -: t) in
@@ -1013,7 +1013,7 @@ module Make_EllipticCurve (M : sig val modulo : int end) = struct
           (* Note: 2yp is never zero (provided that M.modulo is odd), hence
            * either the division succeeds or a non‐trivial factor is found. *)
           let xp2 = M.(xp*:xp) in
-          let s = M.(div_factorize (xp2 +: xp2 +: xp2 +: a) (yp +: yp)) in
+          let s = M.((xp2 +: xp2 +: xp2 +: a) *: inv_factorize (yp +: yp)) in
           let t = M.(yp -: s*:xp) in
           let xr = M.(s*:s -: xp -: xq) in
           let yr = M.(~-: s*:xr -: t) in

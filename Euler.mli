@@ -439,16 +439,16 @@ module Modular : sig
 
   exception Factor_found of int
 
-  (** A version of the modular division specialized for factorization purposes.
-      [div_factorize ~modulo:m a b] is similar to [div ~modulo:m a b] but handles
-      more precisely the cases when [b] is not invertible.
-      {b Complexity:} 𝒪(log([b])) = 𝒪(log([m])) ([b] being under canonical form).
-      @raise Division_by_zero when [b] is zero.
-      @raise Factor_found when [b] is non‐zero and not invertible; in this case,
-      gcd([m],[b]) is a non‐trivial factor of [m], which is returned as the
+  (** A version of the modular inverse specialized for factorization purposes.
+      [inv_factorize ~modulo:m a] is similar to [inv ~modulo:m a] but handles
+      more precisely the cases when [a] is not invertible.
+      {b Complexity:} 𝒪(log([a])) = 𝒪(log([m])) ([a] being under canonical form).
+      @raise Division_by_zero when [a] is zero.
+      @raise Factor_found when [a] is non‐zero and not invertible; in this case,
+      gcd([m],[a]) is a non‐trivial factor of [m], which is returned as the
       parameter of the exception [Factor_found].
   *)
-  val div_factorize : modulo:int -> int -> int -> int
+  val inv_factorize : modulo:int -> int -> int
 
   (** Modular exponentiation. When [n] is non‐negative, [pow ~modulo:m a n] is
       [a]{^[n]} in the ring ℤ∕[m]ℤ; when [n] is negative, it is [a']{^−[n]} where
@@ -514,8 +514,8 @@ module Modular : sig
     (** This is {!Modular.div_nonunique}[ ~modulo]. “Divide, just divide.” *)
     val ( //: ) : t -> t -> t
 
-    (** This is {!Modular.div_factorize}[ ~modulo]. *)
-    val div_factorize : t -> t -> t
+    (** This is {!Modular.inv_factorize}[ ~modulo]. *)
+    val inv_factorize : t -> t
 
     (** Modular exponentiation. *)
     val pow : t -> int -> t

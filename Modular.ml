@@ -75,9 +75,9 @@ fun a b ->
  * reimplement the algorithm instead of using [Arith.gcdext] directly because
  * in the latter function Bézout’s coefficients can overflow, whereas we are
  * only interested in their class modulo [m].
- * This function returns a pair [(d, v)] where [1 ≤ d ≤ m] is the GCD of [m] and
- * [b], and [0 ≤ v < m] is such that [d = v·b  (mod m)]. It never fails; when
- * [b = 0], it returns [d = m].
+ * [gcdext ~modulo:m b] returns a pair [(d, v)] where [1 ≤ d ≤ m] is the GCD of
+ * [m] and [b], and [0 ≤ v < m] is such that [d = v·b  (mod m)]. It never fails;
+ * when [b = 0], it returns [d = m].
  * Such a [v] is defined modulo [m/d].
  * TODO: Can we always return a [v] that is invertible modulo [m]? I’m under the
  * impression that we can, and that either the smallest or the largest non-null
@@ -139,23 +139,21 @@ fun a b ->
 exception Factor_found of int
 
 (*
-let div_factorize ~modulo:m a b =
+let inv_factorize ~modulo:m b =
   begin try
-    div ~modulo:m a b
+    inv ~modulo:m b
   with Division_by_zero when b <> 0 ->
     let d = Arith.gcd m b in
     raise (Factor_found d)
   end
 *)
-let div_factorize ~modulo:m =
-  let ( *: ) = mul ~modulo:m
-  and gcdext = gcdext ~modulo:m in
-fun a b ->
-  assert (0 <= a && a < m) ;
+let inv_factorize ~modulo:m =
+  let gcdext = gcdext ~modulo:m in
+fun b ->
   assert (0 <= b && b < m) ;
   let (d, v) = gcdext b in
   if d = 1 then
-    a *: v
+    v
   else if d = m then
     raise Division_by_zero
   else
@@ -213,7 +211,7 @@ module Make (M : sig val modulo : int end) = struct
 
   let ( //: ) = div_nonunique ~modulo
 
-  let div_factorize = div_factorize ~modulo
+  let inv_factorize = inv_factorize ~modulo
 
   let pow = pow ~modulo
   let ( **: ) = pow
