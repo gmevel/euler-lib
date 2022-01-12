@@ -532,7 +532,22 @@ let gcdext a0 b0 =
       let q = a / b in
       (* TODO: Avoid overflows in intermediate values for computing the Bézout
        * coefficients (use zarith? prove that somehow we compute the smallest
-       * coefficients possible and that there are in fact no overflows?). *)
+       * coefficients possible and that there are in fact no overflows?).
+       * IDEA: Use [Modular.gcdext]! Assuming [0 ≤ b < a], it gives us the GCD
+       * [d] and a coefficient [0 ≤ v < a], defined modulo [a/d], such that:
+       *     v·b = d + u·a  for some u
+       * Then we can deduce the coefficient [u]:
+       *     u = (v·b − d) / a = (v·(b/d) − 1) / (a/d)
+       * Since [0 ≤ b < a] and [0 ≤ v], we have:
+       *     0 ≤ u < v < a
+       * Thus, since [a] fits in a native integer, then so do [u] and [v].
+       * Since we know that all possible [v] are defined modulo [a/d], we can
+       * even minimize [v], i.e. take the unique [v] in the range [0 ≤ v < a/d].
+       * In that case, we get:
+       *     0 ≤ u < b/d
+       * so we have also minimized [u].
+       * The remaining question is how to compute [(v·b − d) / a] without
+       * overflowing. *)
       gcdext b (a mod b) x y (u -? q *? x) (v -? q *? y)
     end
   in

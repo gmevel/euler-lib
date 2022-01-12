@@ -74,23 +74,49 @@ fun a b ->
 (* We compute the modular inverse using an extended Euclidean algorithm. We
  * reimplement the algorithm instead of using [Arith.gcdext] directly because
  * in the latter function Bézout’s coefficients can overflow, whereas we are
- * only interested in their class modulo [m]. *)
-let inv ~modulo:m =
+ * only interested in their class modulo [m].
+ * This function returns a pair [(d, v)] where [1 ≤ d ≤ m] is the GCD of [m] and
+ * [b], and [0 ≤ v < m] is such that [d = v·b  (mod m)]. It never fails; when
+ * [b = 0], it returns [d = m].
+ * Such a [v] is defined modulo [m/d].
+ * TODO: Can we always return a [v] that is invertible modulo [m]? I’m under the
+ * impression that we can, and that either the smallest or the largest non-null
+ * representative (whichever is closest to a multiple of [m]) is invertible, but
+ * I’m not sure how to prove it at the moment.
+ *)
+let gcdext ~modulo:m =
   let ( -: ) = sub ~modulo:m
   and ( *: ) = mul ~modulo:m in
-  let rec gcdext a b u v x y =
-    if b = 0 then begin
-      if a <> 1 then
-        raise Division_by_zero ;
-      v
-    end else begin
-      let q = (a / b) mod m in
-      gcdext b (a mod b) x y (u -: q *: x) (v -: q *: y)
-    end
+  (* By contrast with [Arith.gcdext], we are not interested in returning [u], so
+   * we need neither [u] nor [x] parameters.
+   * Invariants:
+   *   0 ≤ b < a ≤ m
+   *   a = v·b0  (mod m)
+   *   b = y·b0  (mod m)
+   *   0 ≤ v < m
+   *   0 ≤ y < m  unless m = 1
+   *)
+  let rec gcdext a b v y =
+    if b >= 2 then
+      (* Here [a/b < m] since [b ≥ 2], so we can avoid computing [a/b mod m]: *)
+      gcdext b (a mod b) y (v -: (a/b) *: y)
+    else if b = 1 then
+      (1, y)
+    else (* b = 0 *)
+      (a, v)
   in
+fun b0 ->
+  gcdext m b0 0 1
+
+let inv ~modulo:m =
+  let gcdext = gcdext ~modulo:m in
 fun b ->
   assert (0 <= b && b < m) ;
-  gcdext m b 1 0 0 1
+  let (d, v) = gcdext b in
+  if d = 1 then
+    v
+  else
+    raise Division_by_zero
 
 let div ~modulo:m =
   let mul = mul ~modulo:m
@@ -99,23 +125,16 @@ fun a b ->
   mul a (inv b)
 
 let div_nonunique ~modulo:m =
-  let ( -: ) = sub ~modulo:m
-  and ( *: ) = mul ~modulo:m in
+  let ( *: ) = mul ~modulo:m
+  and gcdext = gcdext ~modulo:m in
 fun a b ->
   assert (0 <= b && b < m) ;
   assert (0 <= a && a < m) ;
-  let dividend = a in
-  let rec gcdext a b u v x y =
-    if b = 0 then begin
-      if dividend mod a <> 0 then
-        raise Division_by_zero ;
-      (dividend / a) *: v
-    end else begin
-      let q = (a / b) mod m in
-      gcdext b (a mod b) x y (u -: q *: x) (v -: q *: y)
-    end
-  in
-  gcdext m b 1 0 0 1
+  let (d, v) = gcdext b in
+  if a mod d = 0 then
+    (a / d) *: v
+  else
+    raise Division_by_zero
 
 exception Factor_found of int
 
@@ -129,25 +148,18 @@ let div_factorize ~modulo:m a b =
   end
 *)
 let div_factorize ~modulo:m =
-  let ( -: ) = sub ~modulo:m
-  and ( *: ) = mul ~modulo:m in
-  let rec gcdext a b u v x y =
-    if b = 0 then begin
-      if a <> 1 then
-        raise (Factor_found a) ;
-      v
-    end else begin
-      let q = (a / b) mod m in
-      gcdext b (a mod b) x y (u -: q *: x) (v -: q *: y)
-    end
-  in
+  let ( *: ) = mul ~modulo:m
+  and gcdext = gcdext ~modulo:m in
 fun a b ->
   assert (0 <= a && a < m) ;
   assert (0 <= b && b < m) ;
-  if b = 0 then
+  let (d, v) = gcdext b in
+  if d = 1 then
+    a *: v
+  else if d = m then
     raise Division_by_zero
   else
-    a *: gcdext m b 1 0 0 1
+    raise (Factor_found d)
 
 let pow ~modulo:m =
   (* For [m] = 1, [pow] does not give canonical values: *)
