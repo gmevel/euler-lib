@@ -162,6 +162,7 @@ module Arith : sig
   val erem : int -> int -> int
 
   (** Faster alternatives when the divisor is 2. *)
+
   val ediv2 : int -> int * int
   val equo2 : int -> int
   val erem2 : int -> int
@@ -170,6 +171,7 @@ module Arith : sig
       [ediv_pow2 a k] is equivalent to [ediv a (pow2 k)].
       @raise Overflow when the remainder exceeds the range of overflowing
       integers (happens only when [a] < 0 and [pow2 k] overflows). *)
+
   val ediv_pow2 : int -> int -> int * int
   val equo_pow2 : int -> int -> int
   val erem_pow2 : int -> int -> int
@@ -483,7 +485,7 @@ module Modular : sig
     (** Conversions to and from integers. *)
 
     (** A prefix alias for [of_int]. *)
-    val ( ~$ ) : int -> t
+    val ( !: ) : int -> t
 
     (** Modular opposite. *)
     val opp : t -> t
@@ -518,8 +520,35 @@ module Modular : sig
     (** Modular exponentiation. *)
     val pow : t -> int -> t
 
+    (** An infix alias for [pow]. *)
+    val ( **: ) : t -> int -> t
+
     (** Random generation with the uniform distribution. *)
     val rand : unit -> t
+
+    (** The following operators are shortcuts that spare us the need to
+        write [of_int] conversions on their operands. The most useful ones
+        are [( *.:)] and [(/:.)], for multiplicative literal constants. *)
+
+    val ( ~-:. ) : int -> t
+    val ( ~/:. ) : int -> t
+    val ( +.: ) : int -> t -> t
+    val ( +:. ) : t -> int -> t
+    val ( +.. ) : int -> int -> t
+    val ( -.: ) : int -> t -> t
+    val ( -:. ) : t -> int -> t
+    val ( -.. ) : int -> int -> t
+    val ( *.: ) : int -> t -> t
+    val ( *:. ) : t -> int -> t
+    val ( *.. ) : int -> int -> t
+    val ( /.: ) : int -> t -> t
+    val ( /:. ) : t -> int -> t
+    val ( /.. ) : int -> int -> t
+    val ( //.: ) : int -> t -> t
+    val ( //:. ) : t -> int -> t
+    val ( //.. ) : int -> int -> t
+    val ( **.: ) : int -> int -> t
+
   end (* module Modular.Make *)
 
 end (* module Modular *)

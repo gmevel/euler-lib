@@ -180,7 +180,7 @@ module Make (M : sig val modulo : int end) = struct
 
   let of_int a =
     Arith.erem a modulo
-  let ( ~$ ) = of_int
+  let ( !: ) = of_int
 
   let to_int a =
     a
@@ -204,8 +204,29 @@ module Make (M : sig val modulo : int end) = struct
   let div_factorize = div_factorize ~modulo
 
   let pow = pow ~modulo
+  let ( **: ) = pow
 
   let rand = rand ~modulo
+
+  let ( ~-:. ) a = ~-: !:a
+  let ( ~/:. ) a = ~/: !:a
+  let ( +:. ) a b = a +: !:b
+  let ( +.: ) a b = !:a +: b
+  let ( +.. ) a b = !:a +: !:b
+  let ( -:. ) a b = a -: !:b
+  let ( -.: ) a b = !:a -: b
+  let ( -.. ) a b = !:a -: !:b
+  let ( *.: ) a b = !:a *: b
+  let ( *:. ) a b = a *: !:b
+  let ( *.. ) a b = !:a *: !:b
+  let ( /.: ) a b = !:a /: b
+  let ( /:. ) a b = a /: !:b
+  let ( /.. ) a b = !:a /: !:b
+  let ( //.: ) a b = !:a //: b
+  let ( //:. ) a b = a //: !:b
+  let ( //.. ) a b = !:a //: !:b
+  let ( **.: ) a b = !:a **: b
+
 end
 
 
