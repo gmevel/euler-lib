@@ -2,3 +2,4 @@ _build/
 _doc
 .merlin
 *.install
+bench/

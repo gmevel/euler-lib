@@ -4,7 +4,7 @@
 	(wrapped     true)
 	(synopsis    "An OCaml library for Project Euler problems. This is mostly an arithmetic library.")
 	(libraries   seq containers zarith)
-	(modules     (:standard \ gen-preculling))
+	(modules     (:standard \ gen-preculling)) ; also exclude "bench" if needed
 	(flags       (:standard
 		-w +a@8@14@29@28-6-32-60
 		-short-paths -principal -strict-sequence -safe-string
@@ -25,3 +25,10 @@
 	(modules    gen-preculling)
 	(flags      -w -24)
 )
+
+;(executable
+;	(name       bench)
+;	(modules    bench)
+;	(libraries  euler)
+;	(flags      -w -26-38)
+;)
