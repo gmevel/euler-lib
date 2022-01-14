@@ -131,7 +131,7 @@ fun a0 b0 ->
        * at most equal to lower_half² + lower_half, which is less than 2^N): *)
       let h' = al*bh + h in
       if h' <= lower_half then
-        sign (a0 lxor b0) * ((h' lsl uint_half_size) lor l)
+        mul_sign (a0 lxor b0) ((h' lsl uint_half_size) lor l)
       else
         raise Overflow
     end
@@ -146,7 +146,7 @@ fun a0 b0 ->
       (* This expression does not overflow (same proof): *)
       let h' = ah*bl + h in
       if h' <= lower_half then
-        sign (a0 lxor b0) * ((h' lsl uint_half_size) lor l)
+        mul_sign (a0 lxor b0) ((h' lsl uint_half_size) lor l)
       else
         raise Overflow
     end
@@ -496,9 +496,8 @@ let isqrt n =
  * with the same method as for [isqrt], i.e. based on the fact that the function
  * [fun x -> x ** (1./.3.)] is monotonic (which seems reasonable, but I haven’t
  * checked). *)
-let icbrt n =
-  let s = sign n
-  and n = abs n in
+let icbrt n0 =
+  let n = abs n0 in
   let x = truncate (float n ** (1./.3.)) in
   let next_cube = (x+1)*(x+1)*(x+1) in
   (* [(x+1)³] overflows only when [x³] is the largest representable cube; then
@@ -509,9 +508,9 @@ let icbrt n =
    * By contrast with [isqrt], an off-by-one error happens pretty quick, as soon
    * as n = 4³ = 64, so there is no point in shortcutting the test. *)
   if n < next_cube || next_cube < 0 then
-    s * x
+    mul_sign n0 x
   else
-    s * (x+1)
+    mul_sign n0 (x+1)
 
 let rec gcd a b =
   if b = 0 then
@@ -719,7 +718,7 @@ let mul_quo a b d =
   (* This will be checked anyway by following native divisions: *)
   (*if d = 0 then
     raise Division_by_zero ;*)
-  let s = sign a * sign b * sign d
+  let s = a lxor b lxor d
   and a = abs a
   and b = abs b
   and d = abs d in
@@ -729,7 +728,7 @@ let mul_quo a b d =
   let (b, d) = (b / g, d / g) in
   let (qa, ra) = (a / d, a mod d) in
   let (qb, rb) = (b / d, b mod d) in
-  s * ((qa *? b) +? (ra *? qb) +? (ra *? rb / d))
+  mul_sign s ((qa *? b) +? (ra *? qb) +? (ra *? rb / d))
   (* TODO: Avoid overflow in the intermediate product (use zarith?). *)
 
 let binoms n =
