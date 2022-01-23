@@ -119,7 +119,7 @@ module Arith : sig
       than [b]. It is the same as [Stdlib.compare] but much faster. *)
   val compare : int -> int -> int
 
-  (** Integer opposite. This is the same as [Stdlib.(~-)]. It cannot overflow. *)
+  (** Integer opposite. By contrast with [Stdlib.(~-)], it cannot overflow. *)
   val opp : int -> int
 
   (** Overflowing integer addition.
@@ -149,7 +149,8 @@ module Arith : sig
   val div_exact : int -> int -> int
 
   (** [ediv a b] is the Euclidean division of [a] by [b]; it returns [(q, r)]
-      such that [a] = [b]×[q] + [r] and 0 ≤ [r] < [b].
+      such that [a] = [b]×[q] + [r] and 0 ≤ [r] < [b]. By contrast with division
+      from the standard library, the remainder is never negative.
       @raise Division_by_zero when [b] is null. *)
   val ediv : int -> int -> int * int
 
@@ -239,7 +240,7 @@ module Arith : sig
   val isqrt : int -> int
 
   (** [icbrt n] is the integer cube root of [n], rounded towards zero.
-      In other words, it is [sign n * r] where [r] is the greatest integer such
+      In other words, it is [sign n × r] where [r] is the greatest integer such
       that [r]³ ≤ |[n]|. *)
   val icbrt : int -> int
 

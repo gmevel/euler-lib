@@ -1,10 +1,10 @@
 (* We treat this native integer as an invalid value. We give it a name in this
  * module so that we can refer to it even though we rebind the name min_int. *)
-let nan = min_int
+let nan = Stdlib.min_int
 
-let max_int = max_int
+let max_int = Stdlib.max_int
 
-let min_int = min_int + 1
+let min_int = Stdlib.min_int + 1
 
 exception Overflow
 
