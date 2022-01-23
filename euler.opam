@@ -5,7 +5,7 @@ version:     "0.0"
 license:     "WTFPL"
 author:      "Glen Mével <glen.mevel@crans.org>"
 maintainer:  "Glen Mével <glen.mevel@crans.org>"
-tags:        [ "arithmetic" "primes" ]
+tags:        [ "arithmetic" "overflow" "primes" ]
 doc:         "https://perso.crans.org/mevel/project-euler-lib/doc/index.html"
 homepage:    "https://gitlab.crans.org/mevel/project-euler-lib"
 dev-repo:    "https://gitlab.crans.org/mevel/project-euler-lib.git"
@@ -18,7 +18,6 @@ depends: [
 	"odoc" { doc }
 	"seq"
 	"containers"
-	"zarith"
 ]
 
 build:      [ make "lib" "DUNE_BUILD_OPTIONS='-p %{name}% -j %{jobs}%'" ]

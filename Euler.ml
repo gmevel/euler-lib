@@ -9,7 +9,3 @@ module Diophantine = Diophantine
 module Primes = Primes
 
 module Farey = Farey
-
-module Z = struct
-  include ZCommon
-end
