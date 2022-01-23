@@ -81,8 +81,7 @@ module Arith : sig
       and differs from [Stdlib.min_int]. *)
   val min_int : int
 
-  (** Raised when the result of an operation exceeds the range of overflowing
-      integers. *)
+  (** Raised when the integer result of an operation is not representable. *)
   exception Overflow
 
   (** Raised when an operation was expected to perform an exact division but the
@@ -123,23 +122,23 @@ module Arith : sig
   val opp : int -> int
 
   (** Overflowing integer addition.
-      @raise Overflow when the result exceeds the range of overflowing integers. *)
+      @raise Overflow when the result overflows. *)
   val add : int -> int -> int
 
   (** Overflowing integer subtraction.
-      @raise Overflow when the result exceeds the range of overflowing integers. *)
+      @raise Overflow when the result overflows. *)
   val sub : int -> int -> int
 
   (** Overflowing integer multiplication.
-      @raise Overflow when the result exceeds the range of overflowing integers. *)
+      @raise Overflow when the result overflows. *)
   val mul : int -> int -> int
 
   (** [mul2 a] is equivalent to [mul 2 a] but much faster.
-      @raise Overflow when the result exceeds the range of overflowing integers. *)
+      @raise Overflow when the result overflows. *)
   val mul2 : int -> int
 
   (** [mul_pow2 k a] is equivalent to [mul (pow2 k) a] but much faster.
-      @raise Overflow when the result exceeds the range of overflowing integers. *)
+      @raise Overflow when the result overflows. *)
   val mul_pow2 : int -> int -> int
 
   (** Exact integer division. By contrast with [Stdlib.(/)], it cannot overflow.
@@ -170,8 +169,8 @@ module Arith : sig
 
   (** Faster alternatives when the divisor is a power of 2.
       [ediv_pow2 a k] is equivalent to [ediv a (pow2 k)].
-      @raise Overflow when the remainder exceeds the range of overflowing
-      integers (happens only when [a] < 0 and [pow2 k] overflows). *)
+      @raise Overflow when the remainder overflows
+        (happens only when [a] < 0 and [pow2 k] overflows). *)
 
   val ediv_pow2 : int -> int -> int * int
   val equo_pow2 : int -> int -> int
@@ -180,14 +179,14 @@ module Arith : sig
   (** [mul_div_exact a b d] computes [a]×[b]∕[d] when [d] does divide [a]×[b].
       @raise Division_by_zero when [d] is null.
       @raise Division_not_exact when [d] does not divide [a]×[b].
-      @raise Overflow when the result exceeds the range of overflowing integers. *)
+      @raise Overflow when the result overflows. *)
   val mul_div_exact : int -> int -> int -> int
 
   (** [mul_quo a b d] tries to compute [a]×[b]÷[d]. It can overflow even if the
       final result fits in the range of overflowing integers. This case is
       guaranteed not to happen as long the denominator of the reduced fraction
       is less than √[max_int] (in particular, when [d] is less than √[max_int]).
-      {e This should be fixed, but I don’t know how.}
+      {e This must be fixed, but I don’t know how.}
       @raise Division_by_zero when [d] is null.
       @raise Overflow as described. *)
   val mul_quo : int -> int -> int -> int
@@ -195,12 +194,12 @@ module Arith : sig
   (** Overflowing integer exponentiation. [pow a n] is [a] to the power [n],
       provided that [n] is non‐negative. Of course, 0{^ 0} = 1.
       {b Complexity:} 𝒪(log([n])) integer multiplications.
-      @raise Overflow when the result exceeds the range of overflowing integers. *)
+      @raise Overflow when the result overflows. *)
   val pow : int -> int -> int
 
   (** [pow2 n] is equivalent to [pow 2 n], but much faster.
       {b Complexity:} 𝒪(1).
-      @raise Overflow when the result exceeds the range of overflowing integers. *)
+      @raise Overflow when the result overflows. *)
   val pow2 : int -> int
 
   (** [powm1 n] is equivalent to [pow (-1) n], but much faster.
@@ -258,16 +257,15 @@ module Arith : sig
       [u] and [v] are Bézout’s coefficients, such that [u]×[a] + [v]×[b] = [d].
       {b Complexity:} 𝒪(log(min(|[a]|,|[b]|))) integer divisions.
       @return [d] = 0 only when [a] = [b] = 0.
-      @raise Overflow when the computation of the Bézout’s coefficients provokes
-      an overflow, even if there exists a pair of Bézout coefficients which
-      would fit in the range of our overflowing integers. {e This should be
-      fixed, but I don’t know how.} *)
+      @raise Overflow when the computation of Bézout’s coefficients provokes
+        an overflow, even if there exists a representable pair of coefficients.
+        {e This must be fixed, but I don’t know how.} *)
   val gcdext : int -> int -> int * int * int
 
   (** [lcm a b] is the lesser common multiple of [a] and [b]. Its sign is that
       of [a]×[b].
       {b Complexity:} 𝒪(log(min(|[a]|,|[b]|))) integer divisions.
-      @raise Overflow when the result exceeds the range of overflowing integers. *)
+      @raise Overflow the result overflows. *)
   val lcm : int -> int -> int
 
   (** [valuation ~factor:d n] returns [(k, m)] such that [n] = [d]{^[k]}×[m] and
@@ -297,20 +295,20 @@ module Arith : sig
   (** [binoms n] returns the [n]{^th} row of Pascal’s triangle, provided that
       [n] is a non-negative integer.
       {b Complexity:} time 𝒪([n]), space 𝒪([n]).
-      @raise Overflow when the greatest value of the result exceeds the range of
-      overflowing integers. For 64‐bit OCaml, this happens for [n] ≥ 66. *)
+      @raise Overflow when the greatest value of the result overflows.
+        For 64‐bit OCaml, this happens for [n] ≥ 66. *)
   val binoms : int -> int array
 
   (** [binom n p] is the [p]{^th} element of the [n]{^th} row of Pascal’s
       triangle, provided that 0 ≤ [p] ≤ [n].
       {b Complexity:} time 𝒪(min([p],[n]−[p])) = 𝒪([n]), space 𝒪(1).
-      @raise Overflow when the result exceeds the range of overflowing integers. *)
+      @raise Overflow when the result overflows. *)
   val binom : int -> int -> int
 
   (** [central_binom p] is the [p]{^th} element of the 2×[p]{^th} row of
       Pascal’s triangle, provided that 0 ≤ [p].
       {b Complexity:} time 𝒪([p]), space 𝒪(1).
-      @raise Overflow when the result exceeds the range of overflowing integers.
+      @raise Overflow when the result overflows.
         For 64‐bit OCaml, this happens for [p] ≥ 33. *)
   val central_binom : int -> int
 
