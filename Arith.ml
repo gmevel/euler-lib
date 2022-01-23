@@ -110,6 +110,23 @@ let sub a b =
   else
     raise Overflow
 
+let rec sum_aux pos neg =
+  begin match pos, neg with
+  | [], xs
+  | xs, [] ->
+      List.fold_left add 0 xs
+  | p::pos', n::neg' ->
+      let s = p + n in
+      if s >= 0 then
+        sum_aux (s::pos') neg'
+      else
+        sum_aux pos' (s::neg')
+  end
+
+let sum xs =
+  let (pos, neg) = List.partition (fun x -> x >= 0) xs in
+  sum_aux pos neg
+
 let mul =
   let uint_half_size = uint_size / 2 in
   let lower_half = (1 lsl uint_half_size) - 1 in

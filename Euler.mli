@@ -129,6 +129,13 @@ module Arith : sig
       @raise Overflow when the result overflows. *)
   val sub : int -> int -> int
 
+  (** Overflowing integer summation. Unlike a naive iteration of {!add}, this
+      succeeds as long as the result is representable, even when partial sums
+      overflow.
+      {b Complexity:} 𝒪([n]) where [n] is the length of the list.
+      @raise Overflow when the result overflows. *)
+  val sum : int list -> int
+
   (** Overflowing integer multiplication.
       @raise Overflow when the result overflows. *)
   val mul : int -> int -> int
