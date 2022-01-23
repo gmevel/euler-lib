@@ -314,6 +314,16 @@ module Arith : sig
 
   (****************************************************************************)
 
+  (** {2 Bit manipulation } *)
+
+  (** [number_of_bits_set n] is the number of non-zero bits in the binary
+      writing of the integer [n] (assuming two’s complement for negative
+      numbers).
+      {b Complexity:} 𝒪([result]). *)
+  val number_of_bits_set : int -> int
+
+  (****************************************************************************)
+
   (** {2 Randomness } *)
 
   (** [rand ~min ~max ()] draws a random integer with the uniform distribution

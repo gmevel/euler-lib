@@ -782,6 +782,15 @@ let central_binom p =
  *     https://fishi.devtail.io/weblog/2015/06/25/computing-large-binomial-coefficients-modulo-prime-non-prime/
  *)
 
+let number_of_bits_set n =
+  let n = ref n in
+  let count = ref 0 in
+  while !n <> 0 do
+    n := !n land (!n - 1) ;
+    incr count ;
+  done ;
+  !count
+
 let rand ?(min=0) ?(max=max_int) () =
   assert (min <= max) ;
   let min = Int64.of_int min
