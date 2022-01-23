@@ -1,0 +1,26 @@
+- use a test tool!
+- euler.opam: check which versions of OCaml we *actually* support
+- grep 'TODO|FIXME' *.ml *.mli
+- Arith.valuation_of_2:
+  + reduce the step-length from 8 to 4, so that precomputed values fit in a
+    single 31-bit integer (step=4: 2×8=16 bits; step=5: 3×16=48 bits)
+  + compare (benchmark) with just using Arith.log2sup, in any case leave a comment
+- micro-optimize (branchless code) Modular base operations
+- micro-optimize branches by putting the common case first?
+- add inlining hints, turn Modular.to_int into external identity, etc.
+- Modular.of_int: add a test for the common scenario where no modulo is needed?
+  needs benchmarking
+- improve [Primes.primes]:
+  + usability: take an optional 2nd callback, [do_composite]
+- improve [Primes.factorization_sieve]:
+  + usability: take more calbacks as arguments
+  + store the factorizations implicitly
+  + cull composite numbers by ascending prime powers (avoid repeated divisions)
+- use a bitset for storing the sets of primes up to 100 or 10_000, and see
+  whether there is any benefit from it
+- clean and document the Farey module
+- implement something about Pythagorean triples
+- implement something about continued fractions
+- implement a solver for Pell equations:
+  https://github.com/danaj/Math-Prime-Util/issues/30
+- adopt a convention for commented out code
