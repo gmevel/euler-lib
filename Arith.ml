@@ -819,6 +819,69 @@ let rand_signed ?(max=max_int) () =
   assert (0 <= max) ;
   rand ~min:(~- max) ~max ()
 
+(* Implementation of [range'].
+ *
+ * We must be careful about overflows. The implementation below performs just
+ * one overflow-avoiding test at initialization; absence of overflow is then
+ * guaranteed by the loop invariant, so we avoid doing one test per step, and we
+ * also reduce the number of branches in the loop (two cases instead of three).
+ * In this variant of the code, the helper functions [nonempty_range_up] and
+ * [nonempty_range_down] produce non-empty ranges, but we could easily hoist the
+ * leading cons-cell outside of these functions if we wanted.
+ *
+ * The distinction between [nonempty_range_up] and [nonempty_range_down] is
+ * there primarily so that we avoid testing the sign of [step] again and again
+ * when in the loop. So in the end, we managed to reduce the tests done at each
+ * step of the loop to just one comparison.
+ *
+ * [til = nan] is allowed, to mean “infinity” (i.e [max_int]+1 when [step] > 0,
+ * or [min_int]−1 when [step] < 0). For this to work, we need the helper
+ * function [nonempty_range_up] to have its upper bound inclusive (because with
+ * exclusive bounds, the comparison [from < til] breaks). However
+ * [nonempty_range_down]
+ * still needs an exclusive bound (the comparison [rom >= to_] would break when
+ * [to_ = max_int+1 = nan]).
+ *)
+let rec nonempty_range_up ~step ~from ~prev_to () =
+  (*! assert (step > 0) ; !*)
+  (* so [to_ := prev_to + step] does not overflow,
+   * and neither does [next := from + step] when [from <= prev_to]: *)
+  (*! assert (prev_to <= max_int - step) ; !*)
+  (* i.e. [from <= to_]: *)
+  (*! assert (from <= prev_to + step) ; !*)
+  if from <= prev_to
+  then Seq.Cons (from, nonempty_range_up ~step ~from:(from+step) ~prev_to)
+  else Seq.Cons (from, Seq.empty)
+let rec nonempty_range_down ~step ~from ~prev_til () =
+  (*! assert (step < 0) ; !*)
+  (* so [til := prev_til + step] does not overflow,
+   * and neither does [next := from + step] when [from > prev_til]: *)
+  (*! assert (prev_til >= nan - step) ; !*)
+  (* i.e. [from > til]: *)
+  (*! assert (from > prev_til + step) ; !*)
+  if from > prev_til
+  then Seq.Cons (from, nonempty_range_down ~step ~from:(from+step) ~prev_til)
+  else Seq.Cons (from, Seq.empty)
+let range' ?(step=1) ?(from=0) ?(til=nan) () =
+  assert (step <> nan && step <> 0) ;
+  assert (from <> nan) ;
+  if step >= 0 && from <= til-1 then
+    (* NOTE: in the `else` case, the requested sequence is just a singleton
+     * (because [min_int ≤ from ≤ til-1 < min_int+step ≤ from+step]), so instead
+     * of calling `nonempty_range_up` we could also return `Seq.return from`: *)
+    let prev_to = if til-1 >= min_int + step then til-1 - step else nan in
+    nonempty_range_up ~step ~from ~prev_to
+  else if step < 0 && from > til then
+    (* NOTE: same remark: *)
+    let prev_til = if til <= max_int + step then til - step else max_int in
+    nonempty_range_down ~step ~from ~prev_til
+  else
+    Seq.empty
+let[@inline] range ~from ~til = range' ~step:1 ~from ~til ()
+let[@inline] range_down ~from ~til = range' ~step:~-1 ~from ~til ()
+let[@inline] range0 len = range' ~step:1 ~from:0 ~til:len ()
+let[@inline] range1 len = range' ~step:1 ~from:1 ~til:(len+1) ()
+
 let ( ~- ) = opp
 let ( + ) = add
 let ( - ) = sub
@@ -842,4 +905,57 @@ let () =
   assert (jacobi 2 9 = 1) ;
   assert (jacobi 21 39 = 0) ;
   assert (jacobi 30 59 = ~-1) ;
+  ()
+
+let () =
+  let min = min_int in
+  let max = max_int in
+  let test_range ~step ~from ~til = List.of_seq @@ range' ~step ~from ~til () in
+  (* step = 1: *)
+  assert (test_range ~step:1 ~from:10 ~til:20
+      = [10; 11; 12; 13; 14; 15; 16; 17; 18; 19]) ;
+  assert (test_range ~step:1 ~from:10 ~til:11 = [10]) ;
+  assert (test_range ~step:1 ~from:10 ~til:10 = []) ;
+  assert (test_range ~step:1 ~from:10 ~til:9  = []) ;
+  assert (test_range ~step:1 ~from:10 ~til:min = []) ;
+  (* step = 3: *)
+  assert (test_range ~step:3 ~from:10 ~til:19 = [10; 13; 16]) ;
+  assert (test_range ~step:3 ~from:10 ~til:20 = [10; 13; 16; 19]) ;
+  assert (test_range ~step:3 ~from:10 ~til:21 = [10; 13; 16; 19]) ;
+  assert (test_range ~step:3 ~from:(max-1) ~til:(max-1) = []) ;
+  assert (test_range ~step:3 ~from:max ~til:max = []) ;
+  assert (test_range ~step:3 ~from:(max-2) ~til:max = [max-2]) ;
+  assert (test_range ~step:3 ~from:(max-3) ~til:nan = [max-3; max]) ;
+  assert (test_range ~step:3 ~from:min ~til:min = []) ;
+  assert (test_range ~step:3 ~from:min ~til:(min+2) = [min]) ;
+  assert (test_range ~step:3 ~from:min ~til:(min+3) = [min]) ;
+  assert (test_range ~step:3 ~from:min ~til:(min+4) = [min; min+3]) ;
+  (* step = -1: *)
+  assert (test_range ~step:~-1 ~from:20 ~til:10
+      = [20; 19; 18; 17; 16; 15; 14; 13; 12; 11]) ;
+  assert (test_range ~step:~-1 ~from:20 ~til:19 = [20]) ;
+  assert (test_range ~step:~-1 ~from:20 ~til:20 = []) ;
+  assert (test_range ~step:~-1 ~from:20 ~til:21 = []) ;
+  assert (test_range ~step:~-1 ~from:20 ~til:max = []) ;
+  (* step = -3: *)
+  assert (test_range ~step:~-3 ~from:20 ~til:11 = [20; 17; 14]) ;
+  assert (test_range ~step:~-3 ~from:20 ~til:10 = [20; 17; 14; 11]) ;
+  assert (test_range ~step:~-3 ~from:20 ~til:9  = [20; 17; 14; 11]) ;
+  assert (test_range ~step:~-3 ~from:(min+1) ~til:(min+1) = []) ;
+  assert (test_range ~step:~-3 ~from:min ~til:min = []) ;
+  assert (test_range ~step:~-3 ~from:(min+2) ~til:min = [min+2]) ;
+  assert (test_range ~step:~-3 ~from:(min+3) ~til:nan = [min+3; min]) ;
+  assert (test_range ~step:~-3 ~from:max ~til:max = []) ;
+  assert (test_range ~step:~-3 ~from:max ~til:(max-2) = [max]) ;
+  assert (test_range ~step:~-3 ~from:max ~til:(max-3) = [max]) ;
+  assert (test_range ~step:~-3 ~from:max ~til:(max-4) = [max; max-3]) ;
+  (* large steps: *)
+  assert (test_range ~step:max ~from:min ~til:min = []) ;
+  assert (test_range ~step:max ~from:min ~til:max = [min; 0]) ;
+  assert (test_range ~step:max ~from:min ~til:nan = [min; 0; max]) ;
+  assert (test_range ~step:max ~from:(min+1) ~til:nan = [min+1; 1]) ;
+  assert (test_range ~step:min ~from:max ~til:max = []) ;
+  assert (test_range ~step:min ~from:max ~til:min = [max; 0]) ;
+  assert (test_range ~step:min ~from:max ~til:nan = [max; 0; min]) ;
+  assert (test_range ~step:min ~from:(max-1) ~til:nan = [max-1; -1]) ;
   ()

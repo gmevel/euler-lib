@@ -344,6 +344,38 @@ module Arith : sig
 
   (****************************************************************************)
 
+  (** {2 Sequences } *)
+
+  (** [range' ~step ~from ~til ()] returns the sequence of integers
+      between [from] (inclusive) and [til] (exclusive), by increments of [step].
+      [step] must be non-zero, but it can be negative, in which case the
+      sequence is decreasing. [step] defaults to 1, [from] defaults to 0;
+      when [til] is not given, the default is to build the sequence of all
+      representable integers starting from [from] with increment [step].
+      The sequence is persistent (the unit argument is meaningless, it just
+      erases optional arguments).
+      {b Complexity:} 𝒪(1) time and space. *)
+  val range' : ?step:int -> ?from:int -> ?til:int -> unit -> int Seq.t
+
+  (** [range ~from ~til] are the integers from [from] up to [til]−1.
+      In other words it is [range' ~step:1 ~from ~til ()]. *)
+  val range : from:int -> til:int -> int Seq.t
+
+  (** [range_down ~from ~til] are the integers from [from] {e down} to [til]+1.
+      In other words it is [range' ~step:~-1 ~from ~til ()]. *)
+  val range : from:int -> til:int -> int Seq.t
+
+  (** [range0 n] are the [n] integers from 0 up to [n]−1.
+      In other words, it is [range ~from:0 ~til:n]. *)
+  val range0 : int -> int Seq.t
+
+  (** [range0 n] are the [n] integers from 1 up to [n].
+      In other words, it is [range ~from:1 ~til:(n+1)]
+      (except that [n] is allowed to be [max_int]). *)
+  val range1 : int -> int Seq.t
+
+  (****************************************************************************)
+
   (** {2 Operators }
 
       We deliberately override the standard operators. This is to make sure we
