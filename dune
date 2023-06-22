@@ -3,7 +3,7 @@
 	(name        Euler)
 	(wrapped     true)
 	(synopsis    "An OCaml library for Project Euler problems. This is mostly an arithmetic library.")
-	(libraries   seq containers zarith)
+	(libraries   seq containers)
 	(modules     (:standard \ gen-preculling)) ; also exclude "bench" if needed
 	(flags       (:standard
 		-w +a@8@14@29@28-6-32-60
