@@ -23,4 +23,3 @@
 - implement something about continued fractions
 - implement a solver for Pell equations:
   https://github.com/danaj/Math-Prime-Util/issues/30
-- adopt a convention for commented out code

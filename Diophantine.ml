@@ -49,6 +49,7 @@ let solve_congruences li =
   |> List.fold_left solve_2_congruences (0, 1)
 
 (* tests *)
+(* FIXME: Use an actual tool for unit tests. *)
 let () =
   assert ((23, 105) = solve_congruences [(1, 2, 3); (1, 3, 5); (1, 2, 7)]) ;
   assert ((785, 1122) = solve_congruences [(1, 3, 17); (1, 4, 11); (1, 5, 6)]) ;

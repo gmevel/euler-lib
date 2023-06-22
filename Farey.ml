@@ -138,6 +138,8 @@ let list_farey dmax =
   iter_farey dmax (fun frac -> li := frac :: !li) ;
   List.rev !li
 
+(* Tests. *)
+(* FIXME: Use an actual tool for unit tests. *)
 let () =
   assert (next_farey 8 (1, 3) = (3, 8)) ;
   assert (prev_farey 8 (3, 7) = (2, 5)) ;

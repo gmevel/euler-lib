@@ -180,8 +180,8 @@ let ( *? ) = mul
 
 let mul2 a =
   assert (a <> nan) ;
-  (* This does not raise [Overflow] when [a = Stdlib.min_int/2] but rather it
-   * returns [Stdlib.min_int]; oh well… *)
+  (* FIXME: This does not raise [Overflow] when [a = Stdlib.min_int/2] but
+   * rather it returns [nan]; oh well… *)
   if a lxor (a lsl 1) >= 0 then
     a lsl 1
   else
@@ -546,7 +546,7 @@ let gcdext a0 b0 =
         (~-a, ~-u, ~-v)
     end else begin
       let q = a / b in
-      (* TODO: Avoid overflows in intermediate values for computing the Bézout
+      (* FIXME: Avoid overflows in intermediate values for computing the Bézout
        * coefficients (use zarith? prove that somehow we compute the smallest
        * coefficients possible and that there are in fact no overflows?).
        * IDEA: Use [Modular.gcdext]! Assuming [0 ≤ b < a], it gives us the GCD
@@ -746,7 +746,7 @@ let mul_quo a b d =
   let (qa, ra) = (a / d, a mod d) in
   let (qb, rb) = (b / d, b mod d) in
   mul_sign s ((qa *? b) +? (ra *? qb) +? (ra *? rb / d))
-  (* TODO: Avoid overflow in the intermediate product (use zarith?). *)
+  (* FIXME: Avoid overflow in the intermediate product (use zarith?). *)
 
 let binoms n =
   assert (0 <= n) ;
@@ -900,6 +900,7 @@ end
 
 
 (* Tests. *)
+(* FIXME: Use an actual tool for unit tests. *)
 let () =
   assert (jacobi 2 3 = ~-1) ;
   assert (jacobi 2 9 = 1) ;

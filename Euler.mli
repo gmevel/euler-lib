@@ -99,7 +99,7 @@ module Arith : sig
   (** [mul_sign s n] is [n] if [s] is non-negative and −[n] otherwise. *)
   val mul_sign : int -> int -> int
 
-  (** [mul_sign s n] is [n] if [s] is positive, 0 if it is null, and −[n] if it
+  (** [mul_sign0 s n] is [n] if [s] is positive, 0 if it is null, and −[n] if it
       is negative.
       In other words, it is equivalent to [mul (sign s) a], but much faster. *)
   val mul_sign0 : int -> int -> int
@@ -193,7 +193,7 @@ module Arith : sig
       final result fits in the range of overflowing integers. This case is
       guaranteed not to happen as long the denominator of the reduced fraction
       is less than √[max_int] (in particular, when [d] is less than √[max_int]).
-      {e This must be fixed, but I don’t know how.}
+      {e FIXME: This must be fixed, but I don’t know how.}
       @raise Division_by_zero when [d] is null.
       @raise Overflow as described. *)
   val mul_quo : int -> int -> int -> int
@@ -266,7 +266,7 @@ module Arith : sig
       @return [d] = 0 only when [a] = [b] = 0.
       @raise Overflow when the computation of Bézout’s coefficients provokes
         an overflow, even if there exists a representable pair of coefficients.
-        {e This must be fixed, but I don’t know how.} *)
+        {e FIXME: This must be fixed, but I don’t know how.} *)
   val gcdext : int -> int -> int * int * int
 
   (** [lcm a b] is the lesser common multiple of [a] and [b]. Its sign is that
