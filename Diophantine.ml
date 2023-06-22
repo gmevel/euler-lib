@@ -43,16 +43,16 @@ let solve_2_congruences (a, m) (b, n) =
   else
     (a, p)
 
-let solve_congruences li =
-  li
-  |> List.map solve_congruence
-  |> List.fold_left solve_2_congruences (0, 1)
+let solve_congruences classes =
+  classes
+  |> Seq.map solve_congruence
+  |> Seq.fold_left solve_2_congruences (0, 1)
 
 (* tests *)
 (* FIXME: Use an actual tool for unit tests. *)
 let () =
-  assert ((23, 105) = solve_congruences [(1, 2, 3); (1, 3, 5); (1, 2, 7)]) ;
-  assert ((785, 1122) = solve_congruences [(1, 3, 17); (1, 4, 11); (1, 5, 6)]) ;
-  assert ((11, 12) = solve_congruences [(1, 3, 4); (1, 5, 6)]) ;
-  assert ((11, 12) = solve_congruences [(1, -1, 4); (1, -1, 6)]) ;
+  assert ((23, 105) = solve_congruences @@ List.to_seq [(1, 2, 3); (1, 3, 5); (1, 2, 7)]) ;
+  assert ((785, 1122) = solve_congruences @@ List.to_seq [(1, 3, 17); (1, 4, 11); (1, 5, 6)]) ;
+  assert ((11, 12) = solve_congruences @@ List.to_seq [(1, 3, 4); (1, 5, 6)]) ;
+  assert ((11, 12) = solve_congruences @@ List.to_seq [(1, -1, 4); (1, -1, 6)]) ;
   ()

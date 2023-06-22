@@ -110,6 +110,59 @@ let sub a b =
   else
     raise Overflow
 
+(* This implementation of [sum_seq] uses linear space in the worst case, but it
+ * consumes the input sequence only once.
+ *
+ * [add_cons x ys] adds [x] to the list of summands [ys] and then collapses as
+ * many consecutive summands as possible without overflowing: *)
+let rec add_cons x ys =
+  begin match ys with
+  | [] ->
+      [ x ]
+  | y :: ys' ->
+      let s = x + y in
+      (* overflow test (see [add]): *)
+      if (x lxor y) lor (x lxor lnot s) < 0 then
+        add_cons s ys'
+      else
+        x :: ys
+  end
+let sum_seq_oneshot xs =
+  let ys = Seq.fold_left (fun ys x -> add_cons x ys) [ 0 ] xs in
+  (* Invariant: all summands in [ys] are of the same sign (because consecutive
+   * summands of different signs could be summed without overflow). *)
+  begin match ys with
+  | [ y ] -> y
+  | _     -> raise Overflow
+      (* If there are several summands remaining, then they are of the same sign
+       * and cannot be summed, so the result is an overflow. *)
+  end
+
+(* This implementation of [sum_seq] is in constant space, but it consumes the
+ * input sequence twice. *)
+let rec sum_seq_aux s pos neg =
+  if s >= 0 then
+    begin match neg () with
+    | Seq.Nil            -> Seq.fold_left add s pos
+    | Seq.Cons (n, neg') -> sum_seq_aux (s + n) pos neg'
+    end
+  else
+    begin match pos () with
+    | Seq.Nil            -> Seq.fold_left add s neg
+    | Seq.Cons (p, pos') -> sum_seq_aux (s + p) pos' neg
+    end
+let sum_seq_twoshot xs =
+  let (pos, neg) = Seq.partition (fun x -> x >= 0) xs in
+  sum_seq_aux 0 pos neg
+
+(* We prefer the constant-space version, because from it we can obtain the
+ * behavior of the oneshot version by memoizing the input sequence. *)
+let sum_seq = sum_seq_twoshot
+
+(* Here is a similar algorithm for lists, but, by contrast with [Seq.t], it
+ * needlessly uses linear space, because it allocates two lists whose cumulated
+ * length is that of the input list: *)
+(*
 let rec sum_aux pos neg =
   begin match pos, neg with
   | [], xs
@@ -122,10 +175,14 @@ let rec sum_aux pos neg =
       else
         sum_aux pos' (s::neg')
   end
-
 let sum xs =
   let (pos, neg) = List.partition (fun x -> x >= 0) xs in
   sum_aux pos neg
+*)
+
+(* Since algorithms on [Seq.t] use less memory, we use them. *)
+let sum xs =
+  sum_seq_twoshot (List.to_seq xs)
 
 let mul =
   let uint_half_size = uint_size / 2 in

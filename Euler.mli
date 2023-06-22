@@ -132,7 +132,14 @@ module Arith : sig
   (** Overflowing integer summation. Unlike a naive iteration of {!add}, this
       succeeds as long as the result is representable, even when partial sums
       overflow.
-      {b Complexity:} 𝒪([n]) where [n] is the length of the list.
+      Beware that the input sequence is read twice. If that is undesirable, use
+      [Seq.memoize] (OCaml 4.14).
+      {b Complexity:} time 𝒪([n]), space 𝒪(1)
+      where [n] is the length of the sequence.
+      @raise Overflow when the result overflows. *)
+  val sum_seq : int Seq.t -> int
+
+  (** Same as {!sum_seq} but where the input sequence is a list.
       @raise Overflow when the result overflows. *)
   val sum : int list -> int
 
@@ -612,9 +619,9 @@ module Diophantine : sig
   (** Raised when a system has no solution. *)
   exception No_solution
 
-  (** [solve_congruences [ (a1, b1, m1) ; … ; (ak, bk, mk) ]], provided that the
-      {i m{_i}} are non-zero, solves the following linear congruence system of
-      unknown {i x}:
+  (** [solve_congruences @@ List.to_seq [ (a1, b1, m1) ; … ; (ak, bk, mk) ]],
+      provided that the {i m{_i}} are non-zero, solves the following linear
+      congruence system of unknown {i x}:
       - {i a{_1} · x ≡{_m{_1}} b{_1} }
       - {i … }
       - {i a{_k} · x ≡{_m{_k}} b{_k} }
@@ -622,7 +629,7 @@ module Diophantine : sig
         of solutions {i x} + {i m}ℤ,
       @raise No_solution if there are no solutions.
   *)
-  val solve_congruences : (int * int * int) list -> int * int
+  val solve_congruences : (int * int * int) Seq.t -> int * int
 
 end (* module Diophantine *)
 
