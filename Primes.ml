@@ -393,21 +393,21 @@ end
    * want is having the pre‐computed values inserted back into the source code
    * (referring to another module induces a small penalty). Furthermore, we may
    * want to use other values of this module during pre‐computing (such as
-   * [Primality.primes_under_100]), or numeric parameters. Having to set
+   * [Primes.primes_under_100]), or numeric parameters. Having to set
    * parameters in two different places is inconvenient.
    * Things to consider:
    *   — ppx_blob, ocamlify, cppo (preprocessing tools which provide code inclusion)
    *   — MetaOCaml (fully‐fledged multi‐stage programming)
    *)
 
-  let number_of_primes : int = Primality__data_preculling.number_of_primes
-  let round_cardinal   : int = Primality__data_preculling.round_cardinal
+  let number_of_primes : int = Primes__data_preculling.number_of_primes
+  let round_cardinal   : int = Primes__data_preculling.round_cardinal
 
   (* The increments, divided by 2. The first increment is 2 in order to step
    * from [round_cardinal]−1 to [round_cardinal]+1 (recall that the ring of
    * coprime residues is symmetric).
    * Increments are small integers, we store them in a string to save space. *)
-  let half_increments : string = Primality__data_preculling.half_increments
+  let half_increments : string = Primes__data_preculling.half_increments
 
   let[@inline] iter_half_coprimes ~rounds f =
     let half_n = ref (~- 1) in

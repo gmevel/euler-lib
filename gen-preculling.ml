@@ -1,6 +1,6 @@
 (* This program pre‐computes values for pre‐culling small primes in a prime
  * sieve algorithm, and put them in an OCaml source file.
- * The result is used by [Primality.ml]. See there for more detail.
+ * The result is used by [Primes.ml]. See there for more detail.
  * The target filename must be given as first argument to this program.
  *)
 
