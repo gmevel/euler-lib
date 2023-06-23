@@ -403,28 +403,28 @@ module Arith : sig
       don’t write unsafe arithmetic by accident.
   *)
 
-  (** Prefix notation for [opp]. *)
+  (** Prefix notation for {!opp}. *)
   val ( ~- ) : int -> int
 
-  (** Infix notation for [add]. *)
+  (** Infix notation for {!add}. *)
   val ( + ) : int -> int -> int
 
-  (** Infix notation for [sub]. *)
+  (** Infix notation for {!sub}. *)
   val ( - ) : int -> int -> int
 
-  (** Infix notation for [mul]. *)
+  (** Infix notation for {!mul}. *)
   val ( * ) : int -> int -> int
 
-  (** Infix notation for [div_exact]. Note that this is more restrictive than
+  (** Infix notation for {!div_exact}. Note that this is more restrictive than
       the usual division from the standard library; this forces us to realize
       when we are doing a non-exact division, for which we must write [//]. *)
   val ( / ) : int -> int -> int
 
-  (** Infix notation for [equo]. Note that this is not the same as [Stdlib.(/)]
+  (** Infix notation for {!equo}. Note that this is not the same as [Stdlib.(/)]
       when the dividend is negative. *)
   val ( // ) : int -> int -> int
 
-  (** Infix notation for [erem]. Same remark as for [//]. We don’t use (%)
+  (** Infix notation for {!erem}. Same remark as for {! (//)}. We don’t use [(%)]
       because we likely want that symbol to be available for other things (e.g.
       for function composition). *)
   val ( /% ) : int -> int -> int
@@ -553,19 +553,19 @@ module Modular : sig
     val to_int : t -> int
     (** Conversions to and from integers. *)
 
-    (** A prefix alias for [of_int]. *)
+    (** A prefix alias for {!of_int}. *)
     val ( !: ) : int -> t
 
     (** Modular opposite. *)
     val opp : t -> t
 
-    (** A prefix alias for [opp]. *)
+    (** A prefix alias for {!opp}. *)
     val ( ~-: ) : t -> t
 
     (** Modular inverse. *)
     val inv : t -> t
 
-    (** A prefix alias for [inv]. *)
+    (** A prefix alias for {!inv}. *)
     val ( ~/: ) : t -> t
 
     (** Modular addition. *)
@@ -596,7 +596,7 @@ module Modular : sig
     val rand : unit -> t
 
     (** The following operators are shortcuts that spare us the need to
-        write [of_int] conversions on their operands. The most useful ones
+        write {!of_int} conversions on their operands. The most useful ones
         are [( *.:)] and [(/:.)], for multiplicative literal constants. *)
 
     val ( ~-:. ) : int -> t
