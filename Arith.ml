@@ -252,6 +252,32 @@ let mul_pow2 k a =
   else
     raise Overflow
 
+let prod_seq xs =
+  let rec prod_aux p xs =
+    begin match xs () with
+    | Seq.Nil ->
+        p
+    | Seq.Cons (x, xs') ->
+        if x = 0 then
+          0
+        else begin
+          begin match mul p x with
+          | p' ->
+              prod_aux p' xs'
+          | exception Overflow ->
+              if Seq.exists (fun x -> x = 0) xs' then
+                0
+              else
+                raise Overflow
+          end
+        end
+    end
+  in
+  prod_aux 1 xs
+
+let prod xs =
+  prod_seq (List.to_seq xs)
+
 let div_exact a b =
   assert (a <> nan) ;
   assert (b <> nan) ;

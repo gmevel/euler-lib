@@ -155,6 +155,20 @@ module Arith : sig
       @raise Overflow when the result overflows. *)
   val mul_pow2 : int -> int -> int
 
+  (** Overflowing n-ary multiplication. Unlike a naive iteration of {!mul}, this
+      succeeds as long as the result is representable even when partial products
+      overflow (this situation only happens when one of the operands is zero).
+      Every operand is read at most once;
+      when an operand is zero, following operands are not read.
+      {b Complexity:} time 𝒪([n]), space 𝒪(1)
+      where [n] is the length of the sequence.
+      @raise Overflow when the result overflows. *)
+  val prod_seq : int Seq.t -> int
+
+  (** Same as {!prod_seq} but where the input sequence is a list.
+      @raise Overflow when the result overflows. *)
+  val prod : int list -> int
+
   (** Exact integer division. By contrast with [Stdlib.(/)], it cannot overflow.
       @raise Division_by_zero when the divisor is null.
       @raise Division_not_exact when the dividend is not a multiple of the
