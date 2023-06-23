@@ -639,6 +639,8 @@ module Diophantine : sig
       - {i a{_1} · x ≡{_m{_1}} b{_1} }
       - {i … }
       - {i a{_k} · x ≡{_m{_k}} b{_k} }
+
+      {e TODO: complexity?}
       @return a pair [(x, m)] where 0 ≤ {i x} < {i m}, which represents the set
         of solutions {i x} + {i m}ℤ,
       @raise No_solution if there are no solutions.

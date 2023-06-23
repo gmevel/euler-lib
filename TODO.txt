@@ -1,10 +1,12 @@
 - use a test tool!
+- publish on opam!
 - euler.opam: check which versions of OCaml we *actually* support
 - grep 'TODO|FIXME' *.ml *.mli
 - Arith.valuation_of_2:
   + reduce the step-length from 8 to 4, so that precomputed values fit in a
     single 31-bit integer (step=4: 2×8=16 bits; step=5: 3×16=48 bits)
   + compare (benchmark) with just using Arith.log2sup, in any case leave a comment
+- optimize Modular.mul
 - micro-optimize (branchless code) Modular base operations
 - micro-optimize branches by putting the common case first?
 - add inlining hints, turn Modular.to_int into external identity, etc.
