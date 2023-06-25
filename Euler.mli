@@ -1,5 +1,6 @@
 (** This is a library for arithmetic algorithms, primarily developed to solve
-    {{: https://projecteuler.net} Project Euler} problems.
+    {{: https://projecteuler.net} Project Euler} problems, although it is of
+    more general use.
  *)
 
 (******************************************************************************)

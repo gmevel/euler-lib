@@ -2,7 +2,7 @@
 	(public_name euler)
 	(name        Euler)
 	(wrapped     true)
-	(synopsis    "An OCaml library for Project Euler problems. This is mostly an arithmetic library.")
+	(synopsis    "An arithmetic library for OCaml’s standard integers.")
 	(libraries   seq containers)
 	(modules     (:standard \ gen-preculling)) ; also exclude "bench" if needed
 	(flags       (:standard
