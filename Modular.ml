@@ -82,6 +82,7 @@ let[@inline] mul ~modulo:m a b =
  * [m] and [b], and [0 ≤ v < m] is such that [d = v·b  (mod m)]. It never fails;
  * when [b = 0], it returns [d = m].
  * Such a [v] is defined modulo [m/d].
+ * TODO: always return minimal [v]?
  * TODO: Can we always return a [v] that is invertible modulo [m]? I’m under the
  * impression that we can, and that either the smallest or the largest non-null
  * representative (whichever is closest to a multiple of [m]) is invertible, but

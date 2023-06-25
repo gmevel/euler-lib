@@ -1,11 +1,8 @@
 (***
- *** suite de Farey (fractions réduites entre 0 et 1 de dénominateur borné)
+ *** Farey sequences (reduced fractions between 0 and 1 with bounded denominator)
  ***
  *** https://en.wikipedia.org/wiki/Farey_sequence
- *** voir #073
  ***)
-
-(* https://en.wikipedia.org/wiki/Farey_sequence *)
 
 (* the Farey sequence of order dmax is the ordered sequence of irreducible
  * fractions between 0 and 1, included, whose denominator is at most dmax.

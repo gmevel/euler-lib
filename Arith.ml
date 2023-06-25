@@ -618,6 +618,7 @@ let rec gcd a b =
   else
     gcd b (a mod b)
 
+(* TODO: always return minimal [(u,v)] ? *)
 let gcdext a0 b0 =
   let rec gcdext a b u v x y =
     assert (a = u*a0 + v*b0) ;

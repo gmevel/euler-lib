@@ -1,0 +1,54 @@
+Lister les triplets pythagoriciens primitifs :
+(a, b, c) entiers positifs tels que
+  →  a² + b² = c²
+  →  a ∧ b ∧ c = 1
+  →  a impair, b pair, c impair
+
+On peut les décrire par deux paramètres entiers (d, e) tels que
+  →  0 < d < e
+  →  d ∧ e = 1
+ainsi :
+  {  a ≔ d e
+  {  b ≔ (e² − d²) ∕ 2
+  {  c ≔ (e² + d²) ∕ 2  =  b + d²
+De plus, a < b équivaut à d < (√2−1) e.
+
+On peut aussi les décrire par deux paramètres entiers (u, v) tels que
+  →  0 < u < v
+  →  u ∧ v = 1
+ainsi :
+  {  b ≔ 2 u v
+  {  a ≔ v² − u²
+  {  c ≔ v² + u²
+De plus, b < a équivaut à u < (√2−1) v.
+
+Correspondance entre les deux systèmes paramétriques :
+  {  d = v − u        {  u = (e − d) ∕ 2
+  {  e = v + u        {  v = (e + d) ∕ 2
+
+--------------------------------------------------------------------------------
+
+Compter le mombre de triplets pythagoriciens (x,y,z) où z est fixé:
+possible avec le théorème des deux carrés de Fermat:
+
+    http://fr.wikipedia.org/wiki/Théorème_des_deux_carrés_de_Fermat
+
+Pour n entier, n peut s’écrire comme somme de deux carrés si et seulement
+si les valuations dans n des facteurs premiers congrus à 3 modulo 4 sont
+paires. Alors, si a1, …, ak sont les valuations dans n des facteurs premiers
+congrus à 1 modulo 4, alors en posant m = (a1+1)…(ak+1), le nombre de
+décompositions « normalisées » de n de la forme n = x² + y² avec 0 ⩽ x < y
+est :
+                      M = partieEntière((m+1)/2)
+Le nombre total de solutions (x,y) signées est alors :
+                      8M      si n n’est pas un carré parfait
+                      8M - 4  sinon
+En effet, chaque couple (x,y) normalisé correspond à 8 couples en tout,
+obtenus en permutant x et y et en changeant leurs signes. Seule exception,
+le couple (0,√n) qui est solution si n est un carré parfait, et qui ne
+correspond en tout qu’à 4 couples.
+
+En particulier, si n = z², alors n est un carré parfait et toutes les
+valuations de n sont paires, donc ce nombre se simplifie ainsi :
+                      4m
+avec bi les valuations dans z, et m = (2b1+1)…(2bk+1).

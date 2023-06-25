@@ -1,11 +1,8 @@
 (***
- *** suite de Farey (fractions réduites entre 0 et 1 de dénominateur borné)
+ *** Farey sequences (reduced fractions between 0 and 1 with bounded denominator)
  ***
  *** https://en.wikipedia.org/wiki/Farey_sequence
- *** voir #073
  ***)
-
-(* https://en.wikipedia.org/wiki/Farey_sequence *)
 
 (* the Farey sequence of order dmax is the ordered sequence of irreducible
  * fractions between 0 and 1, included, whose denominator is at most dmax.
@@ -86,7 +83,16 @@ let rec iter_farey dmax ?starting1 ?starting2 f =
  * sequence of order [dmax]. *)
 and next_farey dmax (a, b) =
   assert ((a, b) <> (1,1)) ;
-  (* compute naively the successor (c₀, d₀) of (a, b) at order b. *)
+  (* compute naively the successor (c₀, d₀) of (a, b) at order b.
+   *
+   * TODO: constant-factor optimization: start from beginning or end of
+   * sequence, whichever is nearest, and use symetry
+   *
+   * TODO: I think we can find a successor much more efficiently, using the
+   * extended Euclidean algorithm: since (a,b) are coprime, we can find (c,d)
+   * such that bc − ad = 1 and and 0 < c ≤ a and 0 ≤ d < b. Furthermore,
+   * a < b implies c < d. So (a,b) and (c,d) are adjacent fractions at order b?
+   * To be checked… *)
   let (c0, d0) =
     let exception Found of (int * int) in
     let found = ref false in
@@ -137,6 +143,8 @@ let list_farey dmax =
   let li = ref [] in
   iter_farey dmax (fun frac -> li := frac :: !li) ;
   List.rev !li
+
+(* TODO: generate sequences of type [Seq.t] rather than [list]. *)
 
 (* Tests. *)
 (* FIXME: Use an actual tool for unit tests. *)
