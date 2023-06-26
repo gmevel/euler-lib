@@ -100,6 +100,22 @@ let compare a b =
   (s land (a lor 1)) lor (lnot s land (a-b))
 *)
 
+let equal : int -> int -> bool = (=)
+
+let pred a =
+  assert (a <> nan) ;
+  if a = min_int then
+    raise Overflow
+  else
+    a - 1
+
+let succ a =
+  assert (a <> nan) ;
+  if a = max_int then
+    raise Overflow
+  else
+    a + 1
+
 let opp = ( ~- )
 
 (* Number of bits of an unsigned integer (OCaml integers are one bit less than
@@ -635,6 +651,23 @@ let icbrt n0 =
     mul_sign n0 x
   else
     mul_sign n0 (x+1)
+
+let is_multiple ~of_:a b =
+  assert (a <> nan) ;
+  assert (b <> nan) ;
+  begin try
+    b mod a = 0
+  with Division_by_zero ->
+    b = 0
+  end
+
+let is_even a =
+  (*! assert (a <> nan) ; !*)
+  a land 1 = 0
+
+let is_odd a =
+  (*! assert (a <> nan) ; !*)
+  a land 1 <> 0
 
 let rec gcd a b =
   (*! assert (a <> nan) ; !*)

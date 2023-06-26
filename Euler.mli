@@ -119,6 +119,17 @@ module Arith : sig
       than [b]. It is the same as [Stdlib.compare] but much faster. *)
   val compare : int -> int -> int
 
+  (** [equal a b] returns [true] when [a] is equal to [b], [false] otherwise. *)
+  val equal : int -> int -> bool
+
+  (** [pred n] is [n]−1.
+      @raise Overflow when the result overflows. *)
+  val pred : int -> int
+
+  (** [succ n] is [n]+1.
+      @raise Overflow when the result overflows. *)
+  val succ : int -> int
+
   (** Integer opposite. By contrast with [Stdlib.(~-)], it cannot overflow. *)
   val opp : int -> int
 
@@ -277,6 +288,17 @@ module Arith : sig
 
   (** {2 Divisors and multiples } *)
 
+  (** [is_multiple ~of_:a b] is [true] iff [b] is a multiple of [a].
+      This function never raise [Division_by_zero],
+      but returns [true] when [a] = 0 and [b] = 0. *)
+  val is_multiple : of_:int -> int -> bool
+
+  (** [is_even a] is equivalent to [is_multiple ~of_:2 a]. *)
+  val is_even : int -> bool
+
+  (** [is_odd a] is equivalent to [not (is_multiple ~of_:2 a)]. *)
+  val is_odd : int -> bool
+
   (** [gcd a b] is the {e positive} greatest common divisor of [a] and [b].
       {b Complexity:} 𝒪(log(min(|[a]|,|[b]|))) integer divisions.
       @return 0 only when [a] = [b] = 0. *)
@@ -353,6 +375,20 @@ module Arith : sig
   (****************************************************************************)
 
   (** {2 Bit manipulation } *)
+
+  (** Most standard bitwise functions are omitted, because it is not clear what
+      to do with overflowing integers. One common usage, dividing or multiplying
+      by powers of 2, is covered by other, specialized functions.
+
+      Missing functions from the standard library:
+        [(land)] / [Int.logand],
+        [(lor)] / [Int.logor],
+        [(lxor)] / [Int.logxor],
+        [lnot] / [Int.lognot],
+        [(lsl)] / [Int.shift_left],
+        [(lsr)] / [Int.shift_right_logical],
+        [(asr)] / [Int.shift_right].
+  *)
 
   (** [number_of_bits_set n] is the number of non-zero bits in the binary
       writing of the integer [n] (assuming two’s complement for negative
