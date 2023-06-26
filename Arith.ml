@@ -24,18 +24,23 @@ let sign a =
 *)
 (* Using the standard comparison function, specialized to type `int`, is even
  * faster. Although the doc does not guarantee that `compare` always return
- * −1, 0 or +1, it is enforced in all OCaml versions up to 4.09. This is about
+ * −1, 0 or +1, it is enforced in all OCaml versions up to 4.14. This is about
  * 4 times faster than the naive implementation. *)
 let sign a =
+  (*! assert (a <> nan) ; !*)
   compare a 0
 
 (* This is a free generalization of [abs] and should be very fast (although not
  * benchmarked). *)
 let mul_sign s n =
+  (*! assert (s <> nan) ; !*)
+  (*! assert (n <> nan) ; !*)
   let u = s asr Sys.int_size in
   n lxor u - u
 
 let mul_sign0 s n =
+  (*! assert (s <> nan) ; !*)
+  (*! assert (n <> nan) ; !*)
   let u = s asr Sys.int_size in
   (n lxor u - u) land ((s lxor (-s)) asr Sys.int_size)
 
@@ -45,6 +50,7 @@ let abs = abs
 (* Below is a branchless implementation, which is about 7.5 times faster than
  * the naive implementation. *)
 let abs n =
+  (*! assert (n <> nan) ; !*)
   let u = n asr Sys.int_size in
   n lxor u - u
 
@@ -52,12 +58,16 @@ let abs n =
  * polymorphic function. *)
 (*
 let min a b =
+  (*! assert (a <> nan) ; !*)
+  (*! assert (b <> nan) ; !*)
   if a <= b then a else b
 *)
 (* Below is a branchless implementation, which is about 1.5 times faster than
  * the naive implementation. Much shorter versions are presented in the wild,
  * but they ignore the fact that the subtraction can overflow. *)
 let min a b =
+  (*! assert (a <> nan) ; !*)
+  (*! assert (b <> nan) ; !*)
   let d = b - a in (* overflow is correctly dealt with *)
   let s = a lxor b in
   let r = (s land b) lor (lnot s land d) in
@@ -69,6 +79,8 @@ let max a b =
   if a <= b then b else a
 *)
 let max a b =
+  (*! assert (a <> nan) ; !*)
+  (*! assert (b <> nan) ; !*)
   let d = b - a in (* overflow is correctly dealt with *)
   let s = a lxor b in
   let r = (s land b) lor (lnot s land d) in
@@ -82,6 +94,8 @@ let compare : int -> int -> int = compare
  * normalize its return value to −1/0/+1). *)
 (*
 let compare a b =
+  (*! assert (a <> nan) ; !*)
+  (*! assert (b <> nan) ; !*)
   let s = (a lxor b) asr Sys.int_size in
   (s land (a lor 1)) lor (lnot s land (a-b))
 *)
@@ -116,6 +130,7 @@ let sub a b =
  * [add_cons x ys] adds [x] to the list of summands [ys] and then collapses as
  * many consecutive summands as possible without overflowing: *)
 let rec add_cons x ys =
+  assert (x <> nan) ;
   begin match ys with
   | [] ->
       [ x ]
@@ -144,7 +159,8 @@ let rec sum_seq_aux s pos neg =
   if s >= 0 then
     begin match neg () with
     | Seq.Nil            -> Seq.fold_left add s pos
-    | Seq.Cons (n, neg') -> sum_seq_aux (s + n) pos neg'
+    | Seq.Cons (n, neg') -> assert (n <> nan) ;
+                            sum_seq_aux (s + n) pos neg'
     end
   else
     begin match pos () with
@@ -169,6 +185,7 @@ let rec sum_aux pos neg =
   | xs, [] ->
       List.fold_left add 0 xs
   | p::pos', n::neg' ->
+      assert (n <> nan) ;
       let s = p + n in
       if s >= 0 then
         sum_aux (s::pos') neg'
@@ -328,12 +345,15 @@ let erem a b =
     r + abs b
 
 let ediv2 a =
+  (*! assert (a <> nan) ; !*)
   (a asr 1, a land 1)
 
 let equo2 a =
+  (*! assert (a <> nan) ; !*)
   a asr 1
 
 let erem2 a =
+  (*! assert (a <> nan) ; !*)
   a land 1
 
 let ediv_pow2 a k =
@@ -363,6 +383,8 @@ let erem_pow2 a k =
     raise Overflow
 
 let pow =
+  (*! assert (a <> nan) ; !*)
+  (*! assert (k <> nan) ; !*)
   Common.pow ~mult:mul ~unit:1
 
 let pow2 k =
@@ -373,6 +395,7 @@ let pow2 k =
     raise Overflow
 
 let powm1 k =
+  (*! assert (k <> nan) ; !*)
   1 - ((k land 1) lsl 1)
 
 (* This implementation is only valid for systems where native unsigned integers
@@ -597,6 +620,7 @@ let isqrt n =
  * [fun x -> x ** (1./.3.)] is monotonic (which seems reasonable, but I haven’t
  * checked). *)
 let icbrt n0 =
+  assert (n0 <> nan) ;
   let n = abs n0 in
   let x = truncate (float n ** (1./.3.)) in
   let next_cube = (x+1)*(x+1)*(x+1) in
@@ -613,6 +637,8 @@ let icbrt n0 =
     mul_sign n0 (x+1)
 
 let rec gcd a b =
+  (*! assert (a <> nan) ; !*)
+  (*! assert (b <> nan) ; !*)
   if b = 0 then
     abs a
   else
@@ -620,6 +646,8 @@ let rec gcd a b =
 
 (* TODO: always return minimal [(u,v)] ? *)
 let gcdext a0 b0 =
+  (*! assert (a <> nan) ; !*)
+  (*! assert (b <> nan) ; !*)
   let rec gcdext a b u v x y =
     assert (a = u*a0 + v*b0) ;
     assert (b = x*a0 + y*b0) ;
@@ -662,6 +690,8 @@ let lcm a b =
     a / gcd a b *? b
 
 let valuation ~factor:d n =
+  (*! assert (d <> nan) ; !*)
+  (*! assert (n <> nan) ; !*)
   assert (abs d <> 1) ;
   assert (n <> 0) ;
   let k = ref 0 in
@@ -674,6 +704,7 @@ let valuation ~factor:d n =
 
 (*
 let valuation_of_2 n =
+  (*! assert (n <> nan) ; !*)
   assert (n <> 0) ;
   let k = ref 0 in
   let m = ref n in
@@ -691,6 +722,7 @@ let valuation_of_2 n =
 let valuation_of_2 =
   let values128 = "\007\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\004\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\005\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\004\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\006\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\004\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\005\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\004\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000" in
 fun n ->
+  (*! assert (n <> nan) ; !*)
   assert (n <> 0) ;
   let k = ref 0 in
   let m = ref n in
@@ -706,6 +738,7 @@ fun n ->
  * about twice slower. *)
 (*
 let valuation_of_2 n =
+  (*! assert (n <> nan) ; !*)
   assert (n <> 0) ;                  (*    n = 0b ???????10000 *)
   let bits = (n lxor (n-1)) lsr 1 in (* bits = 0b 000000001111 *)
   let k = (* we convert to float and get the exponent *)
@@ -764,12 +797,15 @@ let is_square =
   in
   let sqrt_max_int = 1 lsl (uint_size / 2) - 1 in
 fun ?root n ->
+  assert (n <> nan) ;
+  assert (root <> Some nan) ;
   begin match root with
   | None   ->  is_square_mod_wordsz n && 0 <= n && let r = isqrt n in r * r = n
   | Some r ->  is_square_mod_wordsz n && abs r <= sqrt_max_int && r * r = n
   end
 
 let jacobi a n =
+  (*! assert (a <> nan) ; !*)
   assert (0 < n) ;
   assert (n land 1 <> 0) ;
   let ra = ref (erem a n) in
@@ -804,6 +840,9 @@ let jacobi a n =
     0
 
 let mul_div_exact a b d =
+  assert (a <> nan) ;
+  assert (b <> nan) ;
+  assert (d <> nan) ;
   if d = 0 then
     raise Division_by_zero ;
   let g = gcd a d in
@@ -816,6 +855,9 @@ let mul_div_exact a b d =
     a *? b
 
 let mul_quo a b d =
+  assert (a <> nan) ;
+  assert (b <> nan) ;
+  assert (d <> nan) ;
   (* This will be checked anyway by following native divisions: *)
   (*if d = 0 then
     raise Division_by_zero ;*)
@@ -893,6 +935,7 @@ let number_of_bits_set n =
   !count
 
 let rand ?(min=0) ?(max=max_int) () =
+  assert (min <> nan) ;
   assert (min <= max) ;
   let min = Int64.of_int min
   and max = Int64.of_int max in

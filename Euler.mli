@@ -231,7 +231,8 @@ module Arith : sig
       @raise Overflow when the result overflows. *)
   val pow2 : int -> int
 
-  (** [powm1 n] is equivalent to [pow (-1) n], but much faster.
+  (** [powm1 n] is equivalent to [pow (-1) (abs n)], but much faster.
+      [n] may be negative.
       {b Complexity:} 𝒪(1). *)
   val powm1 : int -> int
 
