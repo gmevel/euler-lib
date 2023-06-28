@@ -1,0 +1,24 @@
+(library
+ (public_name euler)
+ (name Euler)
+ (libraries seq containers)
+ (flags
+  (:standard
+   -w
+   +a@8@14@29@28-6-32-60
+   -short-paths
+   -principal
+   -strict-sequence
+   -safe-string
+   -unboxed-types
+   ;-noassert
+   ))
+ (ocamlopt_flags
+  (:standard -inline=5 -ccopt -Ofast)))
+
+(rule
+ (targets Primes__data_preculling.ml)
+ (deps ../config/gen-preculling.exe)
+ (action
+  (run %{deps} %{targets})))
+

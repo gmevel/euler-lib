@@ -1,0 +1,4 @@
+(executable
+ (name gen-preculling)
+ (modules gen-preculling)
+ (flags -w -24))
