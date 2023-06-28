@@ -29,7 +29,6 @@ maintainer: ["Glen Mével <glen.mevel@crans.org>"]
 authors: ["Glen Mével <glen.mevel@crans.org>"]
 license: "WTFPL"
 homepage: "https://github.com/gmevel/euler-lib"
-doc: "https://perso.crans.org/mevel/odoc/euler/index.html"
 bug-reports: "https://github.com/gmevel/euler-lib/issues"
 depends: [
   "dune" {>= "2.0"}
