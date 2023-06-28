@@ -44,6 +44,69 @@ let _mul ~modulo:m a b =
   if (a lor b) < sqrt_max_int then
     (a * b) mod m
   else begin
+    (* This is the naive multiplication algorithm, in base 2.
+     *
+     * TODO: Can we do better? FIRST IDEA, I thought of computing the “low” and
+     * “high” parts of the product a × b, by piecewise multiplication, such
+     * that:
+     *
+     *     a × b = low + (high × R),    where R := 2^w = max_int + 1
+     *
+     * Then we can reduce low, high and R modulo m, and we are left computing:
+     *
+     *     a ×: b = low' +: (high' ×: R')
+     *
+     * But then how to compute the product high' ×: R' without overflowing? Does
+     * not seem simpler than the initial problem.
+     *
+     * A wild idea to further reduce high': if m is odd, then R is coprime with
+     * m, so (assuming we can do that without first having implemented the
+     * multiplication) we can pre-compute its modular inverse T := ((m+1)/2)^w
+     * (because (m+1)/2 is the modular inverse of 2). Then, we can reduce high'
+     * modulo T:
+     *
+     *     a ×: b = low' +: (high' // T) +: ((high' mod T) ×: R')
+     *
+     * But T or R' may not be small with respect to m.
+     *
+     * SECOND IDEA: take another base for the piecewise multiplication. Namely,
+     * take s = r or s = r+1, where r := isqrt(m).
+     *
+     * (1) if r² ≤ m ≤ r(r+1), take s := r; then s² = m−p where p is in 0…r.
+     * (2) if r(r+1) < m < (r+1)², take s := r+1; then s² = m+q where q is in 1…r.
+     *
+     * In both cases, all numbers x in the range 0…(m−1) can be decomposed as
+     * x := (x0 + x1.s) where x0, x1 are in the range 0…r (x0 is even in the
+     * range 0…(s−1)). Then:
+     *
+     *     a ×: b = (a0 + a1.s) ×: (b0 + b1.s)
+     *            = a0.b0 +: (a0.b1 +: a1.b0) ×: s +: (a1.b1) ×: s²
+     *
+     * where the products a0.b0, a1.b0, etc. are in the range 0…r², thus they do
+     * not overflow and are already reduced modulo m. Note that it is also the
+     * case of products such as x0.s (because x0 is in the range 0…(s-1) and
+     * (s−1)s ≤ m in both cases) and such as x1.s (because x1.s ≤ x < m).
+     *
+     * Let’s decompose the intermediate results:
+     *
+     *     (a0.b1 +: a1.b0) := A + B.s
+     *              (a1.b1) := C + D.s
+     *
+     * Then:
+     *     a ×: b = (a0 + a1.s) ×: (b0 + b1.s)
+     *            = a0.b0 +: A.s +: B ×: s² +: C ×: s² +: D.s ×: s²
+     *       if (1):
+     *            = a0.b0 +: A.s -: B.p -: C.p -: D.s ×: p
+     *       if (2):
+     *            = a0.b0 +: A.s +: B.q +: C.q +: D.s ×: q
+     *
+     * But the problem is how to compute the last product, D.s ×: p or D.S ×: q.
+     * It may be as large as r³, which may overflow. Besides, rewriting it as
+     * D ×: s³ does not help, because (r³ mod m) is not necessarily small with
+     * respect to m.
+     *
+     * What about r := icbrt(m) ?
+     *)
     let ra = ref a in
     let rb = ref b in
     if a < b then begin
