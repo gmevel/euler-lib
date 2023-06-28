@@ -8,7 +8,7 @@
 (license WTFPL)
 (authors "Glen Mével <glen.mevel@crans.org>")
 (maintainers "Glen Mével <glen.mevel@crans.org>")
-(documentation "https://perso.crans.org/mevel/odoc/euler/index.html")
+(documentation "https://gmevel.github.io/euler-lib/index.html")
 
 (package
   (name euler)
