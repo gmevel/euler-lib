@@ -6,10 +6,10 @@ license:     "WTFPL"
 author:      "Glen Mével <glen.mevel@crans.org>"
 maintainer:  "Glen Mével <glen.mevel@crans.org>"
 tags:        [ "arithmetic" "overflow" "primes" ]
-doc:         "https://perso.crans.org/mevel/euler-lib/doc/index.html"
-homepage:    "https://gitlab.crans.org/mevel/euler-lib"
-dev-repo:    "https://gitlab.crans.org/mevel/euler-lib.git"
-bug-reports: "https://gitlab.crans.org/mevel/euler-lib/issues"
+doc:         "https://perso.crans.org/mevel/odoc/euler/index.html"
+homepage:    "https://github.com/gmevel/euler-lib"
+dev-repo:    "https://github.com/gmevel/euler-lib.git"
+bug-reports: "https://github.com/gmevel/euler-lib/issues"
 
 available: [ ocaml-version >= "4.02.0" ]
 depends: [
