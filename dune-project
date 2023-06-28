@@ -1,5 +1,7 @@
 (lang dune 2.0)
 
+(name euler)
+
 (generate_opam_files)
 
 (source (github gmevel/euler-lib))
