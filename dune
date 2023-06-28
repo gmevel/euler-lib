@@ -1,30 +1,36 @@
 (library
-	(public_name euler)
-	(name        Euler)
-	(wrapped     true)
-	(synopsis    "An arithmetic library for OCaml’s standard integers.")
-	(libraries   seq containers)
-	(modules     (:standard \ gen-preculling)) ; also exclude "bench" if needed
-	(flags       (:standard
-		-w +a@8@14@29@28-6-32-60
-		-short-paths -principal -strict-sequence -safe-string
-		-unboxed-types
-		;-noassert
-	))
-	(ocamlopt_flags (:standard -inline=5 -ccopt -Ofast))
-)
+ (public_name euler)
+ (name Euler)
+ (wrapped true)
+ (synopsis "An arithmetic library for OCaml\226\128\153s standard integers.")
+ (libraries seq containers)
+ (modules
+  (:standard \ gen-preculling))
+ ; also exclude "bench" if needed
+ (flags
+  (:standard
+   -w
+   +a@8@14@29@28-6-32-60
+   -short-paths
+   -principal
+   -strict-sequence
+   -safe-string
+   -unboxed-types
+   ;-noassert
+   ))
+ (ocamlopt_flags
+  (:standard -inline=5 -ccopt -Ofast)))
 
 (rule
-	(targets    Primes__data_preculling.ml)
-	(deps       gen-preculling.exe)
-	(action     (run %{deps} %{targets}))
-)
+ (targets Primes__data_preculling.ml)
+ (deps gen-preculling.exe)
+ (action
+  (run %{deps} %{targets})))
 
 (executable
-	(name       gen-preculling)
-	(modules    gen-preculling)
-	(flags      -w -24)
-)
+ (name gen-preculling)
+ (modules gen-preculling)
+ (flags -w -24))
 
 ;(executable
 ;	(name       bench)
