@@ -33,7 +33,7 @@ doc: "https://gmevel.github.io/euler-lib/index.html"
 bug-reports: "https://github.com/gmevel/euler-lib/issues"
 depends: [
   "dune" {>= "2.0"}
-  "ocaml" {>= "4.02"}
+  "ocaml" {>= "4.14"}
   "containers"
   "seq"
 ]
@@ -52,3 +52,4 @@ build: [
   ]
 ]
 dev-repo: "git+https://github.com/gmevel/euler-lib.git"
+available: arch != "x86_32" & arch != "arm32"

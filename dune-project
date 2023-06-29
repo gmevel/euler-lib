@@ -38,7 +38,7 @@
 "\|     (* said otherwise, modulo 42, the inverse of (33 + 4) is equal to 5^(−4) *)
 )
   (depends
-(ocaml (>= 4.02))
+(ocaml (>= 4.14))
  containers
  seq
 ))
