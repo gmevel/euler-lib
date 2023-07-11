@@ -266,7 +266,7 @@ module BitVector_array : BITVECTOR
   let[@inline] unset v i = v.(i) <- false
   (*let[@inline] get v i = Array.unsafe_get v i*)
   (*let[@inline] unset v i = Array.unsafe_set v i false*)
-  let[@inline] set_all v = Array.fill v 0 (Array.length v) false
+  let[@inline] set_all v = Array.fill v 0 (Array.length v) true
 end
 
 (* Implementation of bitvectors with bit packing. *)
