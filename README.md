@@ -19,13 +19,13 @@
   - and so on.
 - Solvers for some forms of integer equations (so-called “Diophantine equations”):
   - linear congruence systems (the Chinese remainder theorem),
-  - Pell-Fermat’s equations (the Chakravala method) — preliminary code that just needs some packaging effort).
+  - Pell-Fermat’s equations (the Chakravala method — preliminary code that just needs some packaging effort).
 - Modular arithmetic:
     including finding modular inverses (and pseudo-inverses). A nice functorial interface provides convenient notations and uses a private type to enforce that values are always normalized in the range 0…m−1 where m is the modulus. Example use:
     ```{ocaml}
     module M = Euler.Modular.Make (struct let modulo = 42 end)
     let () = assert (M.( !:1 /: (!:33 +: !:4) = !:5 **:(-4) ))
-    (* said otherwise, modulo 42, the inverse of (33 + 4) is equal to 5^(−4) *)
+    (* modulo 42, the inverse of (33 + 4) is equal to 5^(−4) *)
     ```
 
 # But why?
