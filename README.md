@@ -34,4 +34,4 @@ Writing this library was fun and educative for me, and allowed me to solidify my
 
 Nevertheless, I believe euler might prove actually useful outside of the playground. Overflow detection is an actual need in some software, and implementing it is not trivial, even less so after some amount of micro-optimization (see code). Modular arithmetic is not trivial either (e.g. multiplication is not as simple as (a * b) mod m because this computation might overflow). And well, even integer logarithms and square roots are handy at times, and again they not trivial to implement (as using their floating-point counterpart gives incorrect results for large integers).
 
-The library is documented, with a focus on algorithmic complexities, and implementation code has a lot of comments too. You can find the [docs here](https://perso.crans.org/mevel/odoc/euler/Euler/).
+The library is documented, with a focus on algorithmic complexities, and implementation code has a lot of comments too. You can find the [docs here](https://gmevel.github.io/euler-lib/index.html/euler/Euler/).
