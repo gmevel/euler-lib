@@ -1,3 +1,8 @@
+(* We use some functions which appeared in the stdlib after 4.07 (specifically,
+ * functions in Seq), so we use Stdcompat to get an up-to-date version of the
+ * stdlib: *)
+open! Stdcompat
+
 (* We treat this native integer as an invalid value. We give it a name in this
  * module so that we can refer to it even though we rebind the name min_int. *)
 let nan = Stdlib.min_int

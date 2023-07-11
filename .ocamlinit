@@ -11,9 +11,8 @@ with Not_found -> () end
 
 (* Load required packages. *)
 #use "topfind" ;;
-#require "seq" ;;
+#require "stdcompat" ;;
 #require "containers" ;;
-#require "zarith" ;;
 
 (* Load Euler. *)
 #directory "_build/install/default/lib/euler/" ;;

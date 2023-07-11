@@ -33,9 +33,9 @@ doc: "https://gmevel.github.io/euler-lib/index.html"
 bug-reports: "https://github.com/gmevel/euler-lib/issues"
 depends: [
   "dune" {>= "2.0"}
-  "ocaml" {>= "4.14"}
+  "ocaml" {>= "4.07"}
+  "stdcompat"
   "containers"
-  "seq"
 ]
 build: [
   ["dune" "subst"] {pinned}
