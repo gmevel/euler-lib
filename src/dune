@@ -4,8 +4,8 @@
  (libraries stdcompat containers)
  (flags
   (:standard
-   -w
-   +a@8@14@29@28-6-32-60
+   -w +a@8@14@29@28-6-32-60
+   -warn-error -27
    -short-paths
    -principal
    -strict-sequence
