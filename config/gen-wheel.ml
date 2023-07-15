@@ -24,21 +24,23 @@ let first_primes : int array =
 let number_of_primes : int = Array.length first_primes
 
 (* Their product. *)
-let round_cardinal : int = Array.fold_left ( * ) 1 first_primes
+let diameter : int = Array.fold_left ( * ) 1 first_primes
 
 (* Their Euler’s totient. *)
 let phi : int = Array.fold_left (fun phi p -> phi*(p-1)) 1 first_primes
 
 (* The numbers which are coprime with all pre‐culled primes. *)
 let coprimes : int array =
-  List.init round_cardinal (fun n -> n)
+  List.init diameter (fun n -> n)
   |> List.filter begin fun n ->
         Array.for_all (fun p -> n mod p <> 0) first_primes
       end
   |> Array.of_list
 
 (* The differences between successive coprime numbers, divided by 2.
- * Stored in a string to save space. *)
+ * Increments are small primes, we store them in a string to save space.
+ * The first increment is 2 in order to step from [diameter]−1 to [diameter]+1
+ * (recall that the ring of coprime residues is symmetric). *)
 let half_increments : string =
   String.init phi begin fun i ->
     let inc =
@@ -51,6 +53,6 @@ let half_increments : string =
 let () =
   let out = open_out Sys.argv.(1) in
   Printf.fprintf out "let number_of_primes = %u\n\n" number_of_primes ;
-  Printf.fprintf out "let round_cardinal = %u\n\n" round_cardinal ;
+  Printf.fprintf out "let diameter = %u\n\n" diameter ;
   Printf.fprintf out "let half_increments = %S\n\n" half_increments ;
   close_out out

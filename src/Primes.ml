@@ -185,30 +185,11 @@ let primes_under_10_000 =
 
 (******************************************************************************)
 
-(* Read a precomputed list of prime numbers from a file.
- * Now that an efficient primality test and an efficient sieve are available,
- * this method is obsolete. *)
-(*
-let primes_from_file nmax =
-  assert (0 <= nmax && nmax <= 1_000_000) ;
-  let li = ref [] in
-  let file = Scanf.Scanning.open_in "data/primes-under-1_000_000.data" in
-  let again = ref true in
-  while !again do
-    (* "%_1[\r]@\n" is a format trick that matches \n, \r\n and end‐of‐file. *)
-    Scanf.bscanf file "%u%_1[\r]@\n" @@fun p ->
-    if p <= nmax then
-      li := p :: !li ;
-    again := (p < nmax)
-  done ;
-  Scanf.Scanning.close_in file ;
-  List.rev !li
-*)
-
-(* TODO: Use a better sieve, such as the sieve of Atkin, or a wheel sieve.
+(* TODO: Use a better sieve, such as Pritchard’s or Atkin’s.
  *     https://en.wikipedia.org/wiki/Generating_primes
  *     https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes
  *     https://en.wikipedia.org/wiki/Wheel_factorization
+ *     https://en.wikipedia.org/wiki/Sieve_of_Pritchard
  *     https://en.wikipedia.org/wiki/Sieve_of_Atkin
  *     https://github.com/kimwalisch/primesieve
  *)
@@ -230,9 +211,9 @@ let max_sieve_byte_size = 1 lsl 28
  * there is a massive drop when the segment starts fitting in the cache. So the
  * best value is just under the cache size. *)
 (* let segm_byte_size = 1 lsl 19 *)
-(* This setting is made obsolete by the pre‐culling feature. Now the memory
- * footprint is adjusted through [PreCulling.rounds_per_segment] and the number
- * of pre‐culled primes. *)
+(* This setting is made obsolete by our prime wheel (see below). Now the memory
+ * footprint is adjusted through [Wheel.turns_per_segment] and the number of
+ * pre‐culled primes. *)
 
 (* When nmax is below that threshold, we use the non‐segmented sieve algorithm;
  * when nmax is at least equal to that threshold, we use the segmented one.
@@ -344,7 +325,7 @@ fun nmax ~do_prime ->
  * numbers to consider are, modulo 30:
  *     1, 7, 11, 13, 17, 19, 23, 29
  * There are 1×2×4 = 8 of them, so we only consider an 8∕30‐th of all numbers,
- * which represents a ratio of 27%. Adding more primes reduces the ratio.
+ * which represents a ratio of 27%. Pre‐culling more primes reduces the ratio.
  *
  * To iterate on these numbers, we can use the differences between successive
  * elements:
@@ -352,41 +333,41 @@ fun nmax ~do_prime ->
  * We start with 1, then add 6 (to get 7), then add 2 (to get 11), and so on
  * until we reach 29; after that, we start over from 30+1. This fits naturally
  * into the segmented sieve algorithm, because we just have to set the cardinal
- * of the segments to 30, or a multiple or 30. We call each chunk of length 30 a
- * “round”.
+ * of the segments to 30, or a multiple or 30. We call each chunk of length 30
+ * a “turn” of the wheel.
  *
  * The ratio {numbers considered for primality} ∕ {all numbers} is φ(Q) ∕ Q.
  * When pre‐culling all primes up to 17, it is about 18%.
  *
  * On the other hand, we have to store precomputed data made up of φ(Q) integers
- * (the increments). The total memory footprint of the segmented sieve with
- * pre‐culling is:
+ * (the wheel’s increments). The total memory footprint of the segmented sieve
+ * with pre‐culling is:
  *   + φ(Q) integer values (the increments);
- *   + Q × {rounds per segment} / 2 boolean values (the segment).
- * So how many primes are pre‐culled, as well as how many rounds are done per
+ *   + Q × {turns per segment} / 2 boolean values (the segment).
+ * So how many primes are pre‐culled, as well as how many turns are done per
  * segment, should be chosen carefully. *)
 
-module PreCulling
+module Wheel
 : sig
-  (* The number of rounds per segment. Segments are intervals of cardinal
-   * [round_cardinal]×[rounds_per_segment]. *)
-  val rounds_per_segment : int
-  (* The cardinal of a round. This is the product of all pre‐culled primes. *)
-  val round_cardinal : int
+  (* For the segmented prime sieve, the number of wheel turns per segment.
+   * Segments are intervals of cardinal [diameter]×[turns_per_segment]. *)
+  val turns_per_segment : int
+  (* The cardinal of a turn. This is the product of all pre‐culled primes. *)
+  val diameter : int
   (* The number of small primes that are pre‐culled. *)
   val number_of_primes : int
-  (* [iter_half_coprimes ~rounds f] iterates on all numbers [n] between 0 and
-   * [round_cardinal]×[rounds] which are coprime with all pre‐culled primes.
+  (* [iter_half_coprimes ~turns f] iterates on all numbers [n] between 0 and
+   * [diameter]×[turns] which are coprime with all pre‐culled primes.
    * More exactly, it iterates on their “half” ([n]−1)∕2 ([n] is always odd).
    * This is so because our sieve does not store even numbers. *)
-  val iter_half_coprimes : rounds:int -> (int -> unit) -> unit
+  val iter_half_coprimes : turns:int -> (int -> unit) -> unit
 end
 = struct
 
-  let rounds_per_segment = 4
+  let turns_per_segment = 4
 
-  (* Values are pre‐computed with [gen-preculling.ml]. Adjust there the number
-   * of primes to pre‐cull.
+  (* Values are pre‐computed with [gen-wheel.ml]. Adjust there the number of
+   * primes to pre‐cull.
    *
    * TODO: Generally speaking, code generation could be done better. In this
    * case, we refer to a separate (generated) module, whereas what we really
@@ -400,18 +381,15 @@ end
    *   — MetaOCaml (fully‐fledged multi‐stage programming)
    *)
 
-  let number_of_primes : int = Primes__data_preculling.number_of_primes
-  let round_cardinal   : int = Primes__data_preculling.round_cardinal
+  let number_of_primes   : int = Primes__data_wheel.number_of_primes
+  let diameter           : int = Primes__data_wheel.diameter
 
-  (* The increments, divided by 2. The first increment is 2 in order to step
-   * from [round_cardinal]−1 to [round_cardinal]+1 (recall that the ring of
-   * coprime residues is symmetric).
-   * Increments are small integers, we store them in a string to save space. *)
-  let half_increments : string = Primes__data_preculling.half_increments
+  (* The wheel’s increments, divided by 2, stored in a string to save space. *)
+  let half_increments : string = Primes__data_wheel.half_increments
 
-  let[@inline] iter_half_coprimes ~rounds f =
+  let[@inline] iter_half_coprimes ~turns f =
     let half_n = ref (~- 1) in
-    for _ = 1 to rounds do
+    for _ = 1 to turns do
       StringLabels.iter half_increments ~f:begin fun c ->
         let a = !half_n + Char.code c in
         half_n := a ;
@@ -419,11 +397,21 @@ end
       end
     done
 
-end (* module PreCulling *)
+end (* module Wheel *)
 
-(* The segmented variant of the sieve of Eratosthenes, with pre‐culling. *)
+(* The segmented variant of the sieve of Eratosthenes, with pre‐culling.
+ *
+ * TODO: Yet another optimization: by using a wheel, when advancing through the
+ * sieve, we do skip numbers which are not coprime with all pre‐culled primes;
+ * however, when crossing out the multiples of a found prime (other than
+ * a pre‐culled prime), we cross out all the (odd) multiples of that prime,
+ * including those that are NOT coprime with the pre-culled primes. This is
+ * wasteful. Instead of enumerating odd multiples, we may enumerate just those
+ * which are coprime with the pre‐culled primes. For that, we can use the wheel
+ * again.
+ *)
 let segmented_eratosthenes_sieve =
-  let segm_cardinal = PreCulling.round_cardinal * PreCulling.rounds_per_segment in
+  let segm_cardinal = Wheel.diameter * Wheel.turns_per_segment in
   (* To save space, we only store odd numbers, so that the actual array only
    * stores C∕2 booleans, where C is the cardinal of a segment.
    * Then, at step K, the “address” addr represents the number C×K + 2×addr + 1.
@@ -502,7 +490,7 @@ fun nmax ~do_prime ->
     BitVector.set_all s ;
     (* Rule out primes already found, and whose square is less than
      * [segm_first]. Pre‐culled primes do not need to be processed. *)
-    for i = PreCulling.number_of_primes to !count_prime_squares - 1 do
+    for i = Wheel.number_of_primes to !count_prime_squares - 1 do
       let p = primes.(i) in
       (* Compute the first odd multiple of [p] at least equal to [segm_first]. *)
       let first_multiple = (((segm_first + p-1) / p) lor 1) * p in
@@ -530,7 +518,7 @@ fun nmax ~do_prime ->
     (* Because there is still a prime whose square is greater than [segm_last],
      * we know that the new primes in this segment also have their squares
      * greater than [segm_last], so there is no need to sieve them out. *)
-    PreCulling.iter_half_coprimes ~rounds:PreCulling.rounds_per_segment
+    Wheel.iter_half_coprimes ~turns:Wheel.turns_per_segment
     begin fun addr_n ->
       if BitVector.get s addr_n then
         let p = ((addr_n lsl 1) lor 1) + segm_first in
@@ -1087,7 +1075,7 @@ let rec merge_factors li1 li2 =
   end
 
 (* The primality test we use for factorization.
- * Our factorization process first perform a trial divisions with all numbers
+ * Our factorization process first performs trial divisions with all numbers
  * below 10 000, so subsequent primality tests need not perform trial divisions
  * again. Moreover, we know that all numbers whose square root is less than
  * 10 007 (the smallest prime number that we did not ruled out) are prime. *)

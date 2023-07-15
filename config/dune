@@ -1,4 +1,4 @@
 (executable
- (name gen-preculling)
- (modules gen-preculling)
+ (name gen-wheel)
+ (modules gen-wheel)
  (flags -w -24))

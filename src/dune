@@ -17,8 +17,8 @@
   (:standard -inline=5 -ccopt -Ofast)))
 
 (rule
- (targets Primes__data_preculling.ml)
- (deps ../config/gen-preculling.exe)
+ (targets Primes__data_wheel.ml)
+ (deps ../config/gen-wheel.exe)
  (action
   (run %{deps} %{targets})))
 
