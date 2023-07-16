@@ -15,25 +15,25 @@ let first_primes : int array =
      53 ; 59 ; 61 ; 67 ; 71 ; 73 ; 79 ; 83 ; 89 ; 97 |]
 
 (* The primes to pre‐cull. *)
-let first_primes : int array =
+let preculled_primes : int array =
   let count = ref 0 in
   while first_primes.(!count) <= pmax do incr count done ;
   Array.sub first_primes 0 !count
 
 (* Their count. *)
-let number_of_primes : int = Array.length first_primes
+let number_of_primes : int = Array.length preculled_primes
 
 (* Their product. *)
-let diameter : int = Array.fold_left ( * ) 1 first_primes
+let diameter : int = Array.fold_left ( * ) 1 preculled_primes
 
 (* Their Euler’s totient. *)
-let phi : int = Array.fold_left (fun phi p -> phi*(p-1)) 1 first_primes
+let number_of_coprimes : int = Array.fold_left (fun phi p -> phi*(p-1)) 1 preculled_primes
 
 (* The numbers which are coprime with all pre‐culled primes. *)
 let coprimes : int array =
   List.init diameter (fun n -> n)
   |> List.filter begin fun n ->
-        Array.for_all (fun p -> n mod p <> 0) first_primes
+        Array.for_all (fun p -> n mod p <> 0) preculled_primes
       end
   |> Array.of_list
 
@@ -42,7 +42,7 @@ let coprimes : int array =
  * The first increment is 2 in order to step from [diameter]−1 to [diameter]+1
  * (recall that the ring of coprime residues is symmetric). *)
 let half_increments : string =
-  String.init phi begin fun i ->
+  String.init number_of_coprimes begin fun i ->
     let inc =
       if i = 0 then 2
       else coprimes.(i) - coprimes.(i-1)
@@ -51,8 +51,16 @@ let half_increments : string =
   end
 
 let () =
+  assert (number_of_primes = Array.length preculled_primes) ;
+  assert (number_of_coprimes = Array.length coprimes) ;
+  assert (number_of_coprimes = String.length half_increments) ;
   let out = open_out Sys.argv.(1) in
+  Printf.fprintf out "let preculled_primes = [|" ;
+    Array.iter (Printf.fprintf out " %u ;") preculled_primes ;
+    Printf.fprintf out " |]\n\n" ;
+  Printf.fprintf out "let last_preculled_prime = %u\n\n" preculled_primes.(number_of_primes-1) ;
   Printf.fprintf out "let number_of_primes = %u\n\n" number_of_primes ;
+  Printf.fprintf out "let number_of_coprimes = %u\n\n" number_of_coprimes ;
   Printf.fprintf out "let diameter = %u\n\n" diameter ;
   Printf.fprintf out "let half_increments = %S\n\n" half_increments ;
   close_out out

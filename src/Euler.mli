@@ -749,6 +749,18 @@ module Primes : sig
   *)
   val primes : int -> do_prime:(int -> unit) -> unit
 
+  (** The sequence of prime numbers up to a specified bound.
+      This is significantly slower than {!primes}
+      (about 50 times slower for [nmax = 1_000_000_000]),
+      but has the advantage that advancing through the sequence
+      is controlled by the consumer,
+      This is a purely functional algorithm,
+      hence the produced sequence is persistent.
+      {b Complexity:} time 𝒪([nmax]×log([nmax])×log(log([nmax]))),
+      space 𝒪(√[nmax] ∕ log([nmax])).
+  *)
+  val prime_seq : int -> int Seq.t
+
   (** Extended prime sieve. [factorizing_sieve nmax ~do_factors:f] computes the
       factorization of all numbers up to [nmax] (included). The result is an
       array [s] such that [s.(n)] is the factorization of [n]. The function also

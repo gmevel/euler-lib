@@ -14,8 +14,9 @@
   needs benchmarking
 - improve [Primes.primes]:
   + usability: take an optional 2nd callback, [do_composite]
-  + usability: have a variant that yields a [Seq.t] rather than an iterator
-    (might not be easy to do until OCaml supports algebraic effects)
+- have a faster [Primes.prime_seq]:
+    (once OCaml supports algebraic effects, this might become possible
+    by turning the iterator [Primes.primes] into a sequence)
 - improve [Primes.factorization_sieve]:
   + usability: take more calbacks as arguments
   + store the factorizations implicitly

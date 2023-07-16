@@ -1,3 +1,8 @@
+(* We use some functions which appeared in the stdlib after 4.07 (specifically,
+ * functions in Seq), so we use Stdcompat to get an up-to-date version of the
+ * stdlib: *)
+open! Stdcompat
+
 type factorization = (int * int) list
 
 (******************************************************************************)
@@ -354,6 +359,9 @@ module Wheel
   val turns_per_segment : int
   (* The cardinal of a turn. This is the product of all pre‐culled primes. *)
   val diameter : int
+  (* The number of elements in a turn which are not pre‐culled, i.e. those which
+   * are coprime with all pre‐culled primes. *)
+  val number_of_coprimes : int
   (* The number of small primes that are pre‐culled. *)
   val number_of_primes : int
   (* [iter_half_coprimes ~turns f] iterates on all numbers [n] between 0 and
@@ -361,6 +369,17 @@ module Wheel
    * More exactly, it iterates on their “half” ([n]−1)∕2 ([n] is always odd).
    * This is so because our sieve does not store even numbers. *)
   val iter_half_coprimes : turns:int -> (int -> unit) -> unit
+  (* [increment i] is the increment from the (i−1)^th to the i^th wheel’s
+   * coprime. The first increment is 2 in order to step from [diameter]−1 to
+   * [diameter]+1 (recall that the ring of coprime residues is symmetric). *)
+  val increment : int -> int
+  (* [next_coprime_index i] is the successor of the wheel’s coprime’s index [i]
+   * (these indexes range from 0 included to [number_of_coprimes] excluded). *)
+  val next_coprime_index : int -> int
+  (* The pre‐culled primes. *)
+  val preculled_primes : int array
+  (* The last pre‐culled prime. *)
+  val last_preculled_prime : int
 end
 = struct
 
@@ -382,7 +401,10 @@ end
    *)
 
   let number_of_primes   : int = Primes__data_wheel.number_of_primes
+  let number_of_coprimes : int = Primes__data_wheel.number_of_coprimes
   let diameter           : int = Primes__data_wheel.diameter
+  let preculled_primes : int array = Primes__data_wheel.preculled_primes
+  let last_preculled_prime : int = Primes__data_wheel.last_preculled_prime
 
   (* The wheel’s increments, divided by 2, stored in a string to save space. *)
   let half_increments : string = Primes__data_wheel.half_increments
@@ -397,6 +419,14 @@ end
       end
     done
 
+  let[@inline] increment i =
+    (*! assert (0 <= i && i < number_of_coprimes) ; !*)
+    Char.code (String.unsafe_get half_increments i) lsl 1
+
+  let[@inline] next_coprime_index i =
+    (*! assert (0 <= i && i < number_of_coprimes) ; !*)
+    if i + 1 < number_of_coprimes then i + 1 else 0
+
 end (* module Wheel *)
 
 (* The segmented variant of the sieve of Eratosthenes, with pre‐culling.
@@ -408,7 +438,7 @@ end (* module Wheel *)
  * including those that are NOT coprime with the pre-culled primes. This is
  * wasteful. Instead of enumerating odd multiples, we may enumerate just those
  * which are coprime with the pre‐culled primes. For that, we can use the wheel
- * again.
+ * again. This is done in [prime_seq], see below.
  *)
 let segmented_eratosthenes_sieve =
   let segm_cardinal = Wheel.diameter * Wheel.turns_per_segment in
@@ -675,6 +705,122 @@ fun nmax ~do_factors ->
     do_factors factors.(n) n
   done ;
   factors
+
+(* Here is a purely functional version of the sieve of Eratosthenes, which is
+ * able to produce a [Seq.t]. The idea is to remember, for each found prime,
+ * what is the next multiple of that prime to be crossed. We keep them in
+ * a priority queue, i.e. a heap. Then, as we advance through numbers, we
+ * compare the current number to the smallest of the next multiples. As long as
+ * we haven’t reached the smallest next multiples, the current number is prime.
+ * When the current number reaches the smallest next multiples, we pop it from
+ * the heap, and insert the subsequent multiples back into the heap.
+ *
+ * Adding a multiple to the heap amounts to crossing it out in the classical
+ * sieve of Eratosthenes. Just as a given multiple may be crossed several times,
+ * beware that a multiple may be present several times in the heap: once for
+ * each prime factor smaller than its square root.
+ *
+ * (This allows to compute full factorizations if wanted.)
+ *
+ * This is significantly slower than the imperative sieve above. The heap adds
+ * a logarithmic factor to the time complexity (more precisely, O(log(π(√n)))
+ * = O(log n), because the heap stores π(√n) elements) and, in practice, most
+ * time is spent operating it. I’ve benchmarked it to about 50 times slower than
+ * the imperative sieve for nmax = 1_000_000_000.
+ *
+ * This implementation uses the wheel optimization to pre‐cull small primes.
+ * This gives a more substantial speed-up than for the segmented imperative
+ * sieve above (makes the sieve about 4 times faster for nmax = 1_000_000_000).
+ * I suspect this is because it spares us many heap operations, and perhaps also
+ * because the wheel optimization is not fully implemented in our imperative
+ * sieve (see an earlier comment).
+ *
+ * Reference:
+ *     "The Genuine Sieve of Eratosthenes", Melissa O’Neill
+ *     https://www.cs.hmc.edu/~oneill/papers/Sieve-JFP.pdf
+ *)
+
+type multiple_of_prime_in_wheel = {
+  multiple : int ;
+  prime : int ;
+  idx : int ; (* the wheel’s coprime’s index of k such that multiple = k×prime *)
+}
+
+(* I’ve benchmarked several implementations of purely functional heaps (leftist,
+ * pairing, binomial, skew binomial). The fastest appears to be the leftist heap
+ * (on par with the pairing heap), provided by the Containers library. *)
+module MultHeap =
+  CCHeap.Make (struct
+    type t = multiple_of_prime_in_wheel
+    let leq = (<=)
+  end)
+
+let prime_seq nmax =
+  (* If we start from a non-empty heap of multiples (which we make sure of by
+   * initializing it with [mult_p1], below), then the heap never becomes empty
+   * because, each time we pop a multiple, we re-insert a new one, except when
+   * the new multiple would exceed [max_int]; but all of [max_int], [max_int]−2,
+   * [max_int]−4 are composite, and the latter at least is not pre‐culled,
+   * because its smallest prime factor is large (2969 on 32-bit OCaml, 34421 on
+   * 64-bit OCaml). Hence, the largest non pre‐culled number is composite, and
+   * so the heap contains it. *)
+  assert (Wheel.last_preculled_prime < 2629) ;
+  let sqrt_nmax = Arith.isqrt nmax in
+  (* [idx] is the wheel’s coprime’s index of [n]. *)
+  let rec seq_aux ~n ~idx next_mults () =
+    (* End of the sequence (knowing that wheel’s increments are small, less than
+     * 256, we can test for overflow on [n] simply by checking its sign): *)
+    if n > nmax || n < 0 then
+      Seq.Nil
+    (* If [n] is composite: *)
+    else if (MultHeap.find_min_exn next_mults).multiple <= n then begin
+      let next_mults = ref next_mults in
+      (* Pop all multiples that are equal to [n], insert back into the heap the
+       * next multiple of the corresponding prime numbers: *)
+      while
+      (* "DO" *)
+        let (next_mults', m) = MultHeap.take_exn !next_mults in
+        let m'_idx = Wheel.next_coprime_index m.idx in
+        let m' =
+          { multiple = m.multiple + m.prime * Wheel.increment m'_idx ;
+            prime = m.prime ;
+            idx = m'_idx } in
+        (* (same remark about overflows, knowing that [m.prime] ≤ √[max_int]) *)
+        if m'.multiple >= 0 then
+          next_mults := MultHeap.add next_mults' m'
+        else
+          next_mults := next_mults' ;
+      (* "WHILE" *)
+        (MultHeap.find_min_exn !next_mults).multiple <= n
+      do () done ;
+      let idx' = Wheel.next_coprime_index idx in
+      let n' = n + Wheel.increment idx' in
+      seq_aux ~n:n' ~idx:idx' !next_mults ()
+    end
+    (* If [n] is prime: *)
+    else begin
+      (* Insert the square of [n] as the first multiple of [n] to skip: *)
+      let next_mults' =
+        if n <= sqrt_nmax then
+          MultHeap.add next_mults { multiple = n*n ; prime = n ; idx = idx }
+        else
+          next_mults
+      in
+      let idx' = Wheel.next_coprime_index idx in
+      let n' = n + Wheel.increment idx' in
+      Seq.Cons (n, seq_aux ~n:n' ~idx:idx' next_mults')
+    end
+  in (* /let seq_aux *)
+  if nmax <= 10_000 then
+    Seq.take_while (fun p -> p <= nmax) (Array.to_seq primes_under_10_000)
+  else
+    let p1 = 1  + Wheel.increment 1 in
+    let p2 = p1 + Wheel.increment 2 in
+    let mult_p1 = { multiple = p1*p1 ; prime = p1 ; idx = 1 } in
+    let next_mults = MultHeap.add MultHeap.empty mult_p1 in
+    Seq.append (Array.to_seq Wheel.preculled_primes) @@
+    Seq.cons p1 @@
+    seq_aux ~n:p2 ~idx:2 next_mults
 
 (******************************************************************************)
 
@@ -1199,7 +1345,7 @@ type incremental_divisor = {
   remaining_factors : factorization ;
 }
 
-module H =
+module DivisorHeap =
   CCHeap.Make (struct
     type t = incremental_divisor
     let leq = (<=)
@@ -1207,7 +1353,7 @@ module H =
 
 let gen_divisor_pairs ~factors n =
   let r = Arith.isqrt n in
-  let h = ref @@ H.add H.empty { divisor = 1 ; remaining_factors = factors } in
+  let h = ref @@ DivisorHeap.add DivisorHeap.empty { divisor = 1 ; remaining_factors = factors } in
   let rec augment_divisor_with_factors d factors =
     begin match factors with
     | [] ->
@@ -1217,13 +1363,13 @@ let gen_divisor_pairs ~factors n =
         if d' <= r then begin
           let remaining_factors =
             if k = 1 then factors' else (p, k-1) :: factors' in
-          h := H.add !h { divisor = d' ; remaining_factors } ;
+          h := DivisorHeap.add !h { divisor = d' ; remaining_factors } ;
           augment_divisor_with_factors d factors'
         end
     end
   in
   let rec gen () =
-    begin match H.take !h with
+    begin match DivisorHeap.take !h with
     | None ->
         Seq.Nil
     | Some (h', x) ->
