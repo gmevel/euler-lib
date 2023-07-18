@@ -39,7 +39,7 @@
 )
   (depends
     (ocaml (>= 4.07))
-    stdcompat
-    containers
+    (stdcompat (>= 18))
+    (containers (>= 3.0))
   )
 )

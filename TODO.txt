@@ -1,6 +1,4 @@
 - use a test tool!
-- publish on opam!
-- euler.opam: check which versions of OCaml we *actually* support
 - grep 'TODO|FIXME' *.ml *.mli
 - Arith.valuation_of_2:
   + reduce the step-length from 8 to 4, so that precomputed values fit in a
