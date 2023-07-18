@@ -289,7 +289,7 @@ module Arith : sig
   (** {2 Divisors and multiples } *)
 
   (** [is_multiple ~of_:a b] is [true] iff [b] is a multiple of [a].
-      This function never raise [Division_by_zero],
+      This function never raises [Division_by_zero],
       but returns [true] when [a] = 0 and [b] = 0. *)
   val is_multiple : of_:int -> int -> bool
 

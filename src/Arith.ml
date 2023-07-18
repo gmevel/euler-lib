@@ -864,7 +864,7 @@ let jacobi a n =
     let n' = n lsr 1 in
     (* This is equivalent modulo 2 to n' × (n'+1) ∕ 2: *)
     let t = (n' lsr 1) lxor n' in
-    (* Computing modulo 2, we add s×k + a'×n' to the sum; the first term
+    (* Computing modulo 2, we add t×k + a'×n' to the sum; the first term
      * accounts for the factors 2 (because (2|n) = (−1)^t), and the second term
      * accounts for the law of quadratic reciprocity): *)
     acc := !acc lxor (t land k) lxor (a' land n') ;
