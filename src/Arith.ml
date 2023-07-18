@@ -229,19 +229,18 @@ fun a0 b0 ->
   assert (a0 <> nan) ;
   assert (b0 <> nan) ;
   let a = abs a0 in
+  let b = abs b0 in
   if a <= lower_half then begin
-    let b = abs b0 in
     if b <= lower_half then
       a0 * b0
     else begin
-      let al = a land lower_half in
       let (bh, bl) = (b lsr uint_half_size, b land lower_half) in
-      let al_bl = al*bl in
-      let (h, l) = (al_bl lsr uint_half_size, al_bl land lower_half) in
+      let a_bl = a*bl in
+      let (h, l) = (a_bl lsr uint_half_size, a_bl land lower_half) in
       (* This expression does not overflow (each variable is at most equal to
        * lower_half = 2^{N∕2}−1 where N = uint_size, so that the total is
        * at most equal to lower_half² + lower_half, which is less than 2^N): *)
-      let h' = al*bh + h in
+      let h' = a*bh + h in
       if h' <= lower_half then
         mul_sign (a0 lxor b0) ((h' lsl uint_half_size) lor l)
       else
@@ -249,14 +248,12 @@ fun a0 b0 ->
     end
   end
   else begin
-    let b = abs b0 in
     if b <= lower_half then begin
       let (ah, al) = (a lsr uint_half_size, a land lower_half) in
-      let bl = (b land lower_half) in
-      let al_bl = al*bl in
-      let (h, l) = (al_bl lsr uint_half_size, al_bl land lower_half) in
+      let al_b = al*b in
+      let (h, l) = (al_b lsr uint_half_size, al_b land lower_half) in
       (* This expression does not overflow (same proof): *)
-      let h' = ah*bl + h in
+      let h' = ah*b + h in
       if h' <= lower_half then
         mul_sign (a0 lxor b0) ((h' lsl uint_half_size) lor l)
       else
@@ -319,8 +316,9 @@ let prod xs =
 let div_exact a b =
   assert (a <> nan) ;
   assert (b <> nan) ;
-  if a mod b = 0 then
-    a / b
+  let q = a / b in
+  if a = q * b then
+    q
   else
     raise Division_not_exact
 
@@ -881,16 +879,12 @@ let mul_div_exact a b d =
   assert (a <> nan) ;
   assert (b <> nan) ;
   assert (d <> nan) ;
-  if d = 0 then
-    raise Division_by_zero ;
+  (* This will be checked anyway by following native divisions: *)
+  (*if d = 0 then
+    raise Division_by_zero ;*)
   let g = gcd a d in
   let (a, d) = (a / g, d / g) in
-  let g = gcd b d in
-  let (b, d) = (b / g, d / g) in
-  if abs d <> 1 then
-    raise Division_not_exact
-  else
-    a *? b
+  a *? (div_exact b d)
 
 let mul_quo a b d =
   assert (a <> nan) ;
