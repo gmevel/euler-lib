@@ -201,20 +201,21 @@ module Arith : sig
       @raise Division_by_zero when [b] is null. *)
   val erem : int -> int -> int
 
-  (** Faster alternatives when the divisor is 2. *)
-
   val ediv2 : int -> int * int
   val equo2 : int -> int
   val erem2 : int -> int
 
-  (** Faster alternatives when the divisor is a power of 2.
-      [ediv_pow2 a k] is equivalent to [ediv a (pow2 k)].
-      @raise Overflow when the remainder overflows
-        (happens only when [a] < 0 and [pow2 k] overflows). *)
+  (** Faster alternatives when the divisor is 2. *)
 
   val ediv_pow2 : int -> int -> int * int
   val equo_pow2 : int -> int -> int
   val erem_pow2 : int -> int -> int
+
+  (** Faster alternatives when the divisor is a power of 2.
+      [ediv_pow2 a k] is equivalent to [ediv a (pow2 k)].
+      @raise Overflow when the remainder overflows
+        (happens only when [a] < 0 and [pow2 k] overflows;
+        [equo_pow2] is not affected). *)
 
   (** [mul_div_exact a b d] computes [a]×[b]∕[d] when [d] does divide [a]×[b].
       @raise Division_by_zero when [d] is null.
