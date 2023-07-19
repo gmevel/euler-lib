@@ -1301,16 +1301,17 @@ let jacobi a n =
   else
     0
 
-let mul_div_exact a b d =
+(* This function is placed here because it uses [gcd], and is used by [binoms]. *)
+let mul_div_exact a b c =
   assert (a <> nan) ;
   assert (b <> nan) ;
-  assert (d <> nan) ;
+  assert (c <> nan) ;
   (* This will be checked anyway by following native divisions: *)
   (*if d = 0 then
     raise Division_by_zero ;*)
-  let g = gcd a d in
-  let (a, d) = (a / g, d / g) in
-  a *? (div_exact b d)
+  let d = gcd a c in
+  let (a', c') = (a / d, c / d) in
+  a' *? (div_exact b c')
 
 let binoms n =
   assert (0 <= n) ;

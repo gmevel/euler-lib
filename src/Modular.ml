@@ -151,9 +151,9 @@ let[@inline] mul ~modulo:m a b =
  * representative (whichever is closest to a multiple of [m]) is invertible, but
  * I’m not sure how to prove it at the moment.
  *)
-let gcdext ~modulo:m b0 =
+let _gcdext ~modulo:m b0 =
   (* By contrast with [Arith.gcdext], we are not interested in returning [u], so
-   * we need neither [u] nor [x] parameters.
+   * we need neither parameter [u] nor [x].
    * Invariants:
    *   0 ≤ b < a ≤ m
    *   a = v·b0  (mod m)
@@ -173,7 +173,7 @@ let gcdext ~modulo:m b0 =
   gcdext m b0 0 1
 
 let _inv ~modulo:m b =
-  let (d, v) = gcdext ~modulo:m b in
+  let (d, v) = _gcdext ~modulo:m b in
   if d = 1 then
     v
   else
@@ -190,7 +190,7 @@ let[@inline] div ~modulo:m a b =
   _div ~modulo:m a b
 
 let _div_nonunique ~modulo:m a b =
-  let (d, v) = gcdext ~modulo:m b in
+  let (d, v) = _gcdext ~modulo:m b in
   if a mod d = 0 then
     _mul ~modulo:m (a / d) v
   else
@@ -212,7 +212,7 @@ let inv_factorize ~modulo:m b =
   end
 *)
 let _inv_factorize ~modulo:m b =
-  let (d, v) = gcdext ~modulo:m b in
+  let (d, v) = _gcdext ~modulo:m b in
   if d = 1 then
     v
   else if d = m then

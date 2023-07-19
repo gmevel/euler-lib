@@ -217,9 +217,9 @@ module Arith : sig
         (happens only when [a] < 0 and [pow2 k] overflows;
         [equo_pow2] is not affected). *)
 
-  (** [mul_div_exact a b d] computes [a]×[b]∕[d] when [d] does divide [a]×[b].
-      @raise Division_by_zero when [d] is null.
-      @raise Division_not_exact when [d] does not divide [a]×[b].
+  (** [mul_div_exact a b c] computes [a]×[b]∕[c] when [c] does divide [a]×[b].
+      @raise Division_by_zero when [c] is null.
+      @raise Division_not_exact when [c] does not divide [a]×[b].
       @raise Overflow when the result overflows. *)
   val mul_div_exact : int -> int -> int -> int
 
