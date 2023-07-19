@@ -11,9 +11,23 @@ let max_int = Stdlib.max_int
 
 let min_int = Stdlib.min_int + 1
 
+(* Number of bits of an unsigned integer (OCaml integers are one bit less than
+ * machine words, and there is one sign bit). *)
+let uint_size = Sys.int_size - 1
+
+let uint_half_size = uint_size / 2
+let lower_half = (1 lsl uint_half_size) - 1
+
 exception Overflow
 
 exception Division_not_exact
+
+(* We will use this datatype internally for some intermediate results that would
+ * not fit in one OCaml integer, but that fit in two. *)
+type long_int = {
+  lo : int ;
+  hi : int ;
+}
 
 (*
 let sign a =
@@ -123,10 +137,6 @@ let succ a =
 
 let opp = ( ~- )
 
-(* Number of bits of an unsigned integer (OCaml integers are one bit less than
- * machine words, and there is one sign bit). *)
-let uint_size = Sys.int_size - 1
-
 let add a b =
   assert (a <> nan) ;
   assert (b <> nan) ;
@@ -144,6 +154,15 @@ let sub a b =
     d
   else
     raise Overflow
+
+let unsigned_long_add (a : int) (b : int) : long_int =
+  assert (a >= 0) ;
+  assert (b >= 0) ;
+  let s = a + b in
+  if s >= 0 then
+    { hi = 0 ; lo = s }
+  else
+    { hi = 1 ; lo = s - max_int - 1 }
 
 (* This implementation of [sum_seq] uses linear space in the worst case, but it
  * consumes the input sequence only once.
@@ -222,10 +241,19 @@ let sum xs =
 let sum xs =
   sum_seq_twoshot (List.to_seq xs)
 
-let mul =
-  let uint_half_size = uint_size / 2 in
-  let lower_half = (1 lsl uint_half_size) - 1 in
-fun a0 b0 ->
+let unsigned_long_mul (a : int) (b : int) : long_int =
+  assert (a >= 0) ;
+  assert (b >= 0) ;
+  let (ah, al) = (a lsr uint_half_size, a land lower_half) in
+  let (bh, bl) = (b lsr uint_half_size, b land lower_half) in
+  let mid = unsigned_long_add (al * bh) (ah * bl) in
+  let mid_lo = mid.lo land lower_half in
+  let low = unsigned_long_add (mid_lo lsl uint_half_size) (al * bl) in
+  let mid_hi = (mid.hi lsl uint_half_size) lor (mid.lo lsr uint_half_size) in
+  let hi = (ah * bh) + mid_hi + low.hi in
+  { lo = low.lo ; hi = hi }
+
+let mul a0 b0 =
   assert (a0 <> nan) ;
   assert (b0 <> nan) ;
   let a = abs a0 in
@@ -536,6 +564,134 @@ let log2 n =
 
 let log ?base n =
   logsup ?base n - 1
+
+(* This function is placed here because it uses [log2sup]. *)
+let unsigned_long_ediv (a : long_int) (b : int) : int * int =
+  assert (a.hi >= 0 && a.lo >= 0) ;
+  assert (b > 0) ;
+  if a.hi >= b then
+    raise Overflow
+  else begin
+    (* This is a long division where bits are grouped in chunks. We want chunks
+     * to be as large as possible in order to minimize the number of operations,
+     * but the chunk size k must satisfy (b−1) × 2^k ≤ max_int, because, at any
+     * step of the algorithm, the current remainder may be as high as b−1, and
+     * when shifting it by k bits we might get a value as high as (b−1) × 2^k,
+     * and this value must not overflow. So we just take the largest such k.
+     *
+     * However, using a multi-bit base requires that we run a machine division
+     * at each step, and machine divisions are very expensive. By contrast, the
+     * simpler binary division (i.e. with base 2, reading bits one by one)
+     * requires only a comparison and a subtraction, which is very cheap.
+     *
+     * So we seek a tradeoff: when chunk_size is large enough, we use our
+     * chunked long division; when it is too small, we fallback to a binary
+     * division. Even if it wasn’t for speed, we need our binary division
+     * algorithm in order to deal with the case where chunk_size is zero
+     * (happens when b > max_int/2), because in this case our chunked division
+     * is unable to avoid overflows.
+     *
+     * Finding the best tradeoff would require proper benchmarking. The
+     * threshold below is a very rough guess. Things to consider:
+     *
+     *   - by switching from the chunked division to the binary division, we
+     *     replace one machine division by about chunk_size additions;
+     *   - the relative latency of a machine division w.r.t addition varies
+     *     considerably; with moderately recent processors, it can be as high as
+     *     40--90 (Intel Skylake, 2015), or 30 (AMD Zen1, 2016); cutting-edge
+     *     processors bring it down to 15 (Intel IceLake, 2020; AMD Zen4, 2022).
+     *)
+    let chunk_size = uint_size - log2sup (b-1) in (* threshold *)
+    if chunk_size >= 20 then begin
+      (* This is the chunked long division. *)
+      let chunk_base = 1 lsl chunk_size in
+      let chunk_mask = chunk_base - 1 in
+      let q = ref 0 in
+      let r = ref a.hi in
+      let i = ref (uint_size - chunk_size) in
+      while !i >= 0 do
+        (*! assert (0 <= !r && !r < b) ; !*)
+        let r' = (!r lsl chunk_size) lor ((a.lo lsr !i) land chunk_mask) in
+        let (q1, r1) = ediv r' b in
+        (*! assert (0 <= q1 && q1 < chunk_base) ; !*)
+        q := (!q lsl chunk_size) lor q1 ;
+        r := r1 ;
+        i := !i - chunk_size ;
+      done ;
+      let tail_size = !i + chunk_size in
+      if tail_size > 0 then begin
+        let tail_base = 1 lsl tail_size in
+        let tail_mask = tail_base - 1 in
+        (*! assert (0 <= !r && !r < b) ; !*)
+        let r' = (!r lsl tail_size) lor (a.lo land tail_mask) in
+        let (q1, r1) = ediv r' b in
+        (*! assert (0 <= q1 && q1 < tail_base) ; !*)
+        q := (!q lsl tail_size) lor q1 ;
+        r := r1 ;
+      end ;
+      (!q, !r)
+    end
+    else begin
+      (* This is a variant of the binary long division. To avoid overflows when
+       * shifting the remainder by one bit, we allow the remainder r to be
+       * negative, and we keep its magnitude in the range 0...b/2 (by contrast,
+       * the usual algorithm keeps r in the range 0 ≤ r < b). To achieve this,
+       * we may either subtract b from, or add b to, the remainder, in which
+       * case we accordingly add +1 or −1 to the quotient.
+       *
+       * An existing optimization of this is the “non-restoring division”, in
+       * which we *always* add +1 or −1 to the quotient (i.e. the quotient’s new
+       * digit is never 0), but I’m not sure whether it can be adapted to avoid
+       * overflows:
+       * https://en.wikipedia.org/wiki/Division_algorithm#Non-restoring_division
+       *)
+      let half_b = b lsr 1 in
+      let q = ref 0 in
+      let r = ref a.hi in
+      if !r > half_b then begin
+        q := 1 ;
+        r := !r - b ;
+      end ;
+      for i = uint_size - 1 downto 0 do
+        (*! assert (0 <= !q && (0 < !q || 0 <= !r)) ; !*)
+        (*! assert (abs !r <= half_d) ; !*)
+        q := (!q lsl 1) ;
+        r := (!r lsl 1) lor ((a.lo lsr i) land 1) ;
+        if abs !r > half_b then begin
+          q := !q + sign !r ;
+          r := !r - mul_sign !r b ;
+        end ;
+      done ;
+      (* Lastly, restore a non-negative remainder: *)
+      if !r < 0 then begin
+        q := !q - 1 ;
+        r := !r + b ;
+      end ;
+      (!q, !r)
+    end
+  end
+
+let mul_ediv a b c =
+  assert (a <> nan) ;
+  assert (b <> nan) ;
+  assert (c <> nan) ;
+  (* checked by [ediv] anyway: *)
+  (*if c = 0 then
+    raise Division_by_zero ;*)
+  begin try
+    ediv (a *? b) c
+  with Overflow ->
+    let (q, r) = unsigned_long_ediv (unsigned_long_mul (abs a) (abs b)) (abs c) in
+    if a lxor b >= 0 then
+      (mul_sign c q, r)
+    else if r <> 0 then
+      (~- (mul_sign c (succ q)), abs c - r)
+    else
+      (~- (mul_sign c q), 0)
+  end
+
+let mul_equo a b c =
+  fst (mul_ediv a b c)
 
 (* The following implementation of the integer square root is guaranteed
  * correct, but is MUCH slower than a naive floating‐point computation. *)
@@ -886,26 +1042,6 @@ let mul_div_exact a b d =
   let (a, d) = (a / g, d / g) in
   a *? (div_exact b d)
 
-let mul_quo a b d =
-  assert (a <> nan) ;
-  assert (b <> nan) ;
-  assert (d <> nan) ;
-  (* This will be checked anyway by following native divisions: *)
-  (*if d = 0 then
-    raise Division_by_zero ;*)
-  let s = a lxor b lxor d
-  and a = abs a
-  and b = abs b
-  and d = abs d in
-  let g = gcd a d in
-  let (a, d) = (a / g, d / g) in
-  let g = gcd b d in
-  let (b, d) = (b / g, d / g) in
-  let (qa, ra) = (a / d, a mod d) in
-  let (qb, rb) = (b / d, b mod d) in
-  mul_sign s ((qa *? b) +? (ra *? qb) +? (ra *? rb / d))
-  (* FIXME: Avoid overflow in the intermediate product (use zarith?). *)
-
 let binoms n =
   assert (0 <= n) ;
   (* Uses the formula: binom(n,p) = binom(n,p−1) × (n−p+1) ∕ p *)
@@ -1059,6 +1195,18 @@ end
 
 
 (* Tests. *)
+
+let () =
+  for _ = 1 to 100 do
+    let a = rand () in
+    let b = rand () in
+    let ab = unsigned_long_mul a b in
+    begin match mul a b with
+    | c                  -> assert (ab = { hi = 0 ; lo = c })
+    | exception Overflow -> assert (ab.hi <> 0)
+    end ;
+  done
+
 (* FIXME: Use an actual tool for unit tests. *)
 let () =
   assert (jacobi 2 3 = ~-1) ;

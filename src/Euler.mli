@@ -222,14 +222,16 @@ module Arith : sig
       @raise Overflow when the result overflows. *)
   val mul_div_exact : int -> int -> int -> int
 
-  (** [mul_quo a b d] tries to compute [a]×[b]÷[d]. It can overflow even if the
-      final result fits in the range of overflowing integers. This case is
-      guaranteed not to happen as long the denominator of the reduced fraction
-      is less than √[max_int] (in particular, when [d] is less than √[max_int]).
-      {e FIXME: This must be fixed, but I don’t know how.}
-      @raise Division_by_zero when [d] is null.
-      @raise Overflow as described. *)
-  val mul_quo : int -> int -> int -> int
+  (** [mul_ediv a b c] computes the Euclidean division of [a]×[b] by [c],
+      even when the intermediate product would overflow.
+      @raise Division_by_zero when [c] is null.
+      @raise Overflow when the quotient overflows. *)
+  val mul_ediv : int -> int -> int -> int * int
+
+  (** [mul_equo a b c] is the quotient of the Euclidean division of [a]×[b] by [c].
+      @raise Division_by_zero when [c] is null.
+      @raise Overflow when the result overflows. *)
+  val mul_equo : int -> int -> int -> int
 
   (** Overflowing integer exponentiation. [pow a n] is [a] to the power [n],
       provided that [n] is non‐negative. Of course, 0{^ 0} = 1.
