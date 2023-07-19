@@ -811,6 +811,59 @@ let icbrt n0 =
   else
     mul_sign n0 (x+1)
 
+(* NOTE: Another interesting thing to compute about perfect squares:
+ *     W. D. Stangl, “Counting Squares in ℤn”, Mathematics Magazine, 1996:
+ *     https://www.maa.org/sites/default/files/Walter_D22068._Stangl.pdf)
+ * In summary, if squares(n) is the number of squares modulo n, then squares is
+ * a multiplicative function, and (for any odd prime p):
+ *     squares(2^k) = {  (2^k +  8) ∕ 6  if k is even ≥ 2
+ *                    {  (2^k + 10) ∕ 6  if k is odd
+ *     squares(p^k) = {  (p^(k+1) +  p + 2) ∕ (2(p+1))  if k is even
+ *                    {  (p^(k+1) + 2p + 1) ∕ (2(p+1))  if k is odd
+ * In particular:
+ *     squares(1)  = 1
+ *     squares(2)  = 2
+ *     squares(4)  = 2
+ *     squares(p)  = (p+1) ∕ 2
+ *     squares(p²) = (p² − p + 2) ∕ 2
+ *)
+
+let is_square =
+  (* To quickly filter out many non-squares, we test whether the number is
+   * a square modulo word_size (32 or 64).
+   *
+   * The only squares modulo 32 are 0, 1, 4, 9, 16, 17 and 25, so checking
+   * whether the number is a square modulo 32 rules out 78% of non-squares.
+   * Likewise, the ratio of non-squares modulo 64 is 81%.
+   *
+   * We use a single native integer to store the lookup table. The same code
+   * works for 32-bit and 64-bit OCaml, because of two facts:
+   *   - [1 lsl n] is the same as [1 lsl (n mod word_size)] (the OCaml manual
+   *     states it is unspecified, but this is what happens in practice);
+   *   - a square modulo 64 is also a square modulo 32 and, conversely, every
+   *     square modulo 32 is the residue of a square modulo 64.
+   * The test can easily be extended to larger powers of 2, but squares modulo
+   * 128 and larger are not included in the lookup table below.
+   *
+   * See also https://gmplib.org/manual/Perfect-Square-Algorithm.html *)
+  assert (Sys.word_size <= 64) ;
+  let squares_mod_wordsz =
+    (1 lsl  0) lor (1 lsl  1) lor (1 lsl  4) lor (1 lsl  9) lor
+    (1 lsl 16) lor (1 lsl 17) lor (1 lsl 25) lor (1 lsl 33) lor
+    (1 lsl 36) lor (1 lsl 41) lor (1 lsl 49) lor (1 lsl 57)
+  in
+  let[@inline] is_square_mod_wordsz n =
+    squares_mod_wordsz land (1 lsl n) <> 0
+  in
+  let sqrt_max_int = 1 lsl (uint_size / 2) - 1 in
+fun ?root n ->
+  assert (n <> nan) ;
+  assert (root <> Some nan) ;
+  begin match root with
+  | None   ->  is_square_mod_wordsz n && 0 <= n && let r = isqrt n in r * r = n
+  | Some r ->  is_square_mod_wordsz n && abs r <= sqrt_max_int && r * r = n
+  end
+
 let is_multiple ~of_:a b =
   assert (a <> nan) ;
   assert (b <> nan) ;
@@ -941,60 +994,6 @@ let valuation_of_2 n =
   in
   (k, n asr k)
 *)
-
-
-(* NOTE: Another interesting thing to compute about perfect squares:
- *     W. D. Stangl, “Counting Squares in ℤn”, Mathematics Magazine, 1996:
- *     https://www.maa.org/sites/default/files/Walter_D22068._Stangl.pdf)
- * In summary, if squares(n) is the number of squares modulo n, then squares is
- * a multiplicative function, and (for any odd prime p):
- *     squares(2^k) = {  (2^k +  8) ∕ 6  if k is even ≥ 2
- *                    {  (2^k + 10) ∕ 6  if k is odd
- *     squares(p^k) = {  (p^(k+1) +  p + 2) ∕ (2(p+1))  if k is even
- *                    {  (p^(k+1) + 2p + 1) ∕ (2(p+1))  if k is odd
- * In particular:
- *     squares(1)  = 1
- *     squares(2)  = 2
- *     squares(4)  = 2
- *     squares(p)  = (p+1) ∕ 2
- *     squares(p²) = (p² − p + 2) ∕ 2
- *)
-
-let is_square =
-  (* To quickly filter out many non-squares, we test whether the number is
-   * a square modulo word_size (32 or 64).
-   *
-   * The only squares modulo 32 are 0, 1, 4, 9, 16, 17 and 25, so checking
-   * whether the number is a square modulo 32 rules out 78% of non-squares.
-   * Likewise, the ratio of non-squares modulo 64 is 81%.
-   *
-   * We use a single native integer to store the lookup table. The same code
-   * works for 32-bit and 64-bit OCaml, because of two facts:
-   *   - [1 lsl n] is the same as [1 lsl (n mod word_size)] (the OCaml manual
-   *     states it is unspecified, but this is what happens in practice);
-   *   - a square modulo 64 is also a square modulo 32 and, conversely, every
-   *     square modulo 32 is the residue of a square modulo 64.
-   * The test can easily be extended to larger powers of 2, but squares modulo
-   * 128 and larger are not included in the lookup table below.
-   *
-   * See also https://gmplib.org/manual/Perfect-Square-Algorithm.html *)
-  assert (Sys.word_size <= 64) ;
-  let squares_mod_wordsz =
-    (1 lsl  0) lor (1 lsl  1) lor (1 lsl  4) lor (1 lsl  9) lor
-    (1 lsl 16) lor (1 lsl 17) lor (1 lsl 25) lor (1 lsl 33) lor
-    (1 lsl 36) lor (1 lsl 41) lor (1 lsl 49) lor (1 lsl 57)
-  in
-  let[@inline] is_square_mod_wordsz n =
-    squares_mod_wordsz land (1 lsl n) <> 0
-  in
-  let sqrt_max_int = 1 lsl (uint_size / 2) - 1 in
-fun ?root n ->
-  assert (n <> nan) ;
-  assert (root <> Some nan) ;
-  begin match root with
-  | None   ->  is_square_mod_wordsz n && 0 <= n && let r = isqrt n in r * r = n
-  | Some r ->  is_square_mod_wordsz n && abs r <= sqrt_max_int && r * r = n
-  end
 
 let jacobi a n =
   (*! assert (a <> nan) ; !*)
