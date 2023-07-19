@@ -565,6 +565,23 @@ let log2 n =
 let log ?base n =
   logsup ?base n - 1
 
+let is_pow ?(base=10) ?exp n =
+  assert (base <> nan) ;
+  assert (exp <> Some nan) ;
+  assert (n <> nan) ;
+  begin match exp with
+  | None ->
+      if base = 0 then n = 1 || n = 0
+      else if base = 1 then n = 1
+      else if base = -1 then abs n = 1
+      else n <> 0 && pow base (log ~base:(abs base) (abs n)) = n
+  | Some exp ->
+      (exp >= 0 || abs base = 1) && (try pow base (abs exp) = n with Overflow -> false)
+  end
+
+let is_pow2 n =
+  n land (n - 1) = 0 && n > 0
+
 (* This function is placed here because it uses [log2sup]. *)
 let unsigned_long_ediv (a : long_int) (b : int) : int * int =
   assert (a.hi >= 0 && a.lo >= 0) ;
@@ -777,7 +794,7 @@ let isqrt n =
  * happens as soon as r > 2^26. *)
 let isqrt n =
   assert (0 <= n) ;
-  let x = truncate@@sqrt@@float n in
+  let r = truncate@@sqrt@@float n in
   (* We test whether the result of the floating-point calculation is indeed the
    * square root, ie. whether x² ≤ n. For values of n close to max_int, x is one
    * more than the square root, and x² overflows, giving min_int. To keep the
@@ -785,10 +802,10 @@ let isqrt n =
    * of x² ≤ n.
    * The first test is a shortcut for the common case (see the explanation above
    * for the constant involved). *)
-  if x <= (1 lsl 26) || x*x - 1 < n then
-    x
+  if r <= (1 lsl 26) || r*r - 1 < n then
+    r
   else
-    x - 1
+    r - 1
 
 (* The below implementation of [icbrt] has been verified for all 63-bit integers
  * with the same method as for [isqrt], i.e. based on the fact that the function
@@ -797,8 +814,8 @@ let isqrt n =
 let icbrt n0 =
   assert (n0 <> nan) ;
   let n = abs n0 in
-  let x = truncate (float n ** (1./.3.)) in
-  let next_cube = (x+1)*(x+1)*(x+1) in
+  let r = truncate (float n ** (1./.3.)) in
+  let next_cube = (r+1)*(r+1)*(r+1) in
   (* [(x+1)³] overflows only when [x³] is the largest representable cube; then
    * [x³ < 2^(int_size−1) ≤ (x+1)³ < 2^int_size], because [((x+1)/x)³ < 2] as
    * soon as [x ≥ 4]. So, provided that we have wrapping integers with
@@ -807,9 +824,62 @@ let icbrt n0 =
    * By contrast with [isqrt], an off-by-one error happens pretty quick, as soon
    * as n = 4³ = 64, so there is no point in shortcutting the test. *)
   if n < next_cube || next_cube < 0 then
-    mul_sign n0 x
+    mul_sign n0 r
   else
-    mul_sign n0 (x+1)
+    mul_sign n0 (r+1)
+
+(* The below implementation of [kth_root] again follows the same principle:
+ * assuming that, for any [k] ≥ 2, the function [fun x -> x ** (1. /. float k)]
+ * is monotonic (which seems reasonable but I haven’t proven it), I have checked
+ * manually that, for all 63-bit numbers, the difference between the true result
+ * and the result given by the floating-point function is always −1, 0 or +1. *)
+let kth_root ~k x0 =
+  assert (k >= 1) ;
+  (* k = 1 is a special case because [truncate (float x)] might commit an error,
+   * and also because (r+1) might overflow! *)
+  if k = 1 then
+    x0
+  else begin
+    assert (x0 <> nan) ;
+    assert (x0 >= 0 || k land 1 <> 0) ;
+    let x = abs x0 in
+    let r = truncate (float x ** (1. /. float k)) in
+    if (try pow r k > x with Overflow -> true) then
+      mul_sign x0 (r-1)
+    else if (try pow (r+1) k > x with Overflow -> true) then
+      mul_sign x0 r
+    else
+      mul_sign x0 (r+1)
+  end
+
+(* Here is the code used for the aforementioned verification of the
+ * floating-point computation of the integer k-th root. *)
+(*
+let () =
+  let module S = Set.Make (Int) in
+  let kth_root_float ~k x =
+    truncate (float x ** (1. /. float k))
+  in
+  for k = 2 to 62 do (* this takes a long time for k=2 (it is fast for k ≥ 3) *)
+    Printf.printf "k = %i\n%!" k ;
+    let set = ref S.empty in
+    let last_root = ref 0 in
+    begin try for r = 1 to max_int do
+      let p = pow r k in
+      let root1 = kth_root_float ~k (p-1) in
+      let root2 = kth_root_float ~k p in
+      (* monotonicity safety check (not a full proof): *)
+      assert (!last_root <= root1 && root1 <= root2) ;
+      last_root := root2 ;
+      set := S.add (root1 - (r-1)) !set ;
+      set := S.add (root2 - r) !set ;
+    done with Overflow -> () end ;
+    !set |>
+    S.iter begin fun d ->
+      Printf.printf "  difference: %i\n" d
+    end
+  done
+*)
 
 (* NOTE: Another interesting thing to compute about perfect squares:
  *     W. D. Stangl, “Counting Squares in ℤn”, Mathematics Magazine, 1996:
@@ -863,6 +933,19 @@ fun ?root n ->
   | None   ->  is_square_mod_wordsz n && 0 <= n && let r = isqrt n in r * r = n
   | Some r ->  is_square_mod_wordsz n && abs r <= sqrt_max_int && r * r = n
   end
+
+let is_kth_pow ~k ?root n =
+  assert (k <> nan) ;
+  assert (root <> Some nan) ;
+  assert (n <> nan) ;
+  if k < 0 then
+    ((root = None || root = Some 1) && n = 1)
+    || ((root = None || root = Some (~-1)) && powm1 k = n)
+  else
+    begin match root with
+    | None   -> (0 <= n || k land 1 <> 0) && pow (kth_root ~k n) k = n
+    | Some r -> (try pow r k = n with Overflow -> false)
+    end
 
 let is_multiple ~of_:a b =
   assert (a <> nan) ;
@@ -994,6 +1077,101 @@ let valuation_of_2 n =
   in
   (k, n asr k)
 *)
+
+let smallest_root =
+  let odd_prime_exponents = [| 3; 5; 7; 11; 13; 17; 19 |] in
+  let smallest_root_positive n =
+    assert (n > 1) ;
+    (* The valuation [k] of a root of [n] is a divisor of the valuation of each
+     * prime factor of [n]. Thus, to eliminate many cases quickly and to avoid
+     * computing some k-th roots, we start by looking at the small prime factors
+     * 2, 3, 5.
+     *
+     * We start with the prime factor 2 because [valuation_of_2] is cheap: *)
+    let (v2, m2) = valuation_of_2 n in
+    if v2 = 1 then (* [n] is a multiple of 2 but not of 4, thus cannot be a power *)
+      (n, 1)
+    else if m2 = 1 then (* [n] is a power of 2 *)
+      (2, v2)
+    else
+    (* Now with the prime factor 3: *)
+    let (v3, m23) = valuation ~factor:3 m2 in
+    let v23 = gcd v2 v3 in
+    if v23 = 1 then (* [n] cannot be a power *)
+      (n, 1)
+    else if m23 = 1 then (* the only prime factors of [n] are 2 and 3 *)
+      (pow 2 (v2/v23) * pow 3 (v3/v23), v23)
+    else
+    (* Now with the prime factor 5: *)
+    let (v5, m235) = valuation ~factor:5 m23 in
+    let v235 = gcd v23 v5 in
+    if v235 = 1 then (* [n] cannot be a power *)
+      (n, 1)
+    else if m235 = 1 then (* the only prime factors of [n] are 2, 3, 5 *)
+      (pow 2 (v2/v235) * pow 3 (v3/v235) * pow 5 (v5/v235), v235)
+    (* Now the general case. We have ruled out the case where the only prime
+     * factors of [n] are 2, 3, 5, so any root of [n] is at least equal to 7.
+     * Then, the root’s valuation is at most log7(max_int) = 22 on 64‐bit OCaml.
+     *
+     * Instead of checking whether [n] is a [k]-th pow for every possible [k] in
+     * decreasing order, we will reconstruct [k] from its prime factorization.
+     * It is thus enough to consider the prime exponents less than 22.
+     *
+     * We also keep in mind that [k] must be a divisor of [v235].
+     *
+     *
+     *)
+    else begin
+      (* invariant:
+       *   - [!r]^[!k] = [n]
+       *   - thus, the root of [n] is the root of [!r],
+       *     and the valuation of that root in [n] is [!k × k']
+       *     where [k'] is the valuation of the said root in [!r]
+       *   - [k'] is a divisor of [!v]. *)
+      let v = ref v235 in
+      let k = ref 1 in
+      let r = ref n in
+      let s = ref 0 in
+      let exception Break in
+      begin try
+        (* prime exponent 2: *)
+        while !v land 1 = 0 &&
+              (s := isqrt !r ; is_square ~root:!s !r) do
+          r := !s ;
+          k := !k lsl 1 ;
+          v := !v lsr 1 ;
+        done ;
+        (* other prime exponents: *)
+        odd_prime_exponents |>
+        Array.iter begin fun p ->
+          if !v <> 0 && !v < p then
+            raise Break ;
+          while !v mod p = 0 &&
+                (s := kth_root ~k:p !r ; is_kth_pow ~k:p ~root:!s !r) do
+            r := !s ;
+            k := !k * p ;
+            v := !v / p ;
+          done ;
+        end
+      with Break -> () end ;
+      (!r, !k)
+    end
+  in
+fun n ->
+  assert (n <> nan) ;
+  assert (n <> 0) ;
+  if n = 1 then
+    (1, 0)
+  else if n = -1 then
+    (-1, 1)
+  else begin
+    let (r, k) = smallest_root_positive (abs n) in
+    if n >= 0 || k land 1 <> 0 then
+      (sign n * r, k)
+    else
+      let (v2, k') = valuation_of_2 k in
+      (~- (pow r (1 lsl v2)), k')
+  end
 
 let jacobi a n =
   (*! assert (a <> nan) ; !*)

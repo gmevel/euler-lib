@@ -233,6 +233,10 @@ module Arith : sig
       @raise Overflow when the result overflows. *)
   val mul_equo : int -> int -> int -> int
 
+  (****************************************************************************)
+
+  (** {2 Exponentiation and logarithms } *)
+
   (** Overflowing integer exponentiation. [pow a n] is [a] to the power [n],
       provided that [n] is non‐negative. Of course, 0{^ 0} = 1.
       {b Complexity:} 𝒪(log([n])) integer multiplications.
@@ -276,19 +280,46 @@ module Arith : sig
       @return 0 when [n] = 0. *)
   val log2sup : int -> int
 
+  (** [is_pow ~base ~exp n] is true if and only if [n] = [base]{^[exp]}.
+      When [exp] is omitted, [is_kth_pow ~base n] says whether [n] is a power of
+      [base].
+      When [exp] is provided, it is equivalent to {!is_kth_pow}[ ~k:exp ~root:base n].
+      The default base is 10. *)
+  val is_pow : ?base:int -> ?exp:int -> int -> bool
+
+  (** [is_pow2 n] is equivalent to [is_pow ~base:2 n], but much faster. *)
+  val is_pow2 : int -> bool
+
+  (****************************************************************************)
+
+  (** {2 Roots } *)
+
+  (** [kth_root ~k n] is the integer [k]{^th} root of [n], rounded towards zero.
+      In other words, it is [sign n × r] where [r] is the greatest integer such
+      that [r]{^[k]} ≤ |[n]|.
+      [k] must be positive. If [k] is even, [n] must be non-negative. *)
+  val kth_root : k:int -> int -> int
+
   (** [isqrt n] is the integer square root of [n], provided that [n] is
       non‐negative. In other words, it is the greatest integer [r] such that
-      [r]² ≤ [n], that is, ⌊√[n]⌋. *)
+      [r]² ≤ [n], that is, ⌊√[n]⌋.
+      It is equivalent to [kth_root ~k:2 n] but should be faster. *)
   val isqrt : int -> int
 
   (** [icbrt n] is the integer cube root of [n], rounded towards zero.
       In other words, it is [sign n × r] where [r] is the greatest integer such
-      that [r]³ ≤ |[n]|. *)
+      that [r]³ ≤ |[n]|.
+      It is equivalent to [kth_root ~k:3 n] but may be faster. *)
   val icbrt : int -> int
 
+  (** [is_kth_pow ~k ~root n] is true if and only if [n] = [root]{^[k]}.
+      When [root] is omitted, [is_kth_pow n] says whether [n] is a [k]{^th} power.
+      When [root] is provided, it is equivalent to {!is_pow}[ ~base:root ~exp:k n]. *)
+  val is_kth_pow : k:int -> ?root:int -> int -> bool
+
   (** [is_square ~root n] is true if and only if [n] is the square of [root].
-      When [root] is omitted, [is_square n] says whether [n] is a perfect
-      square. *)
+      When [root] is omitted, [is_square n] says whether [n] is a perfect square.
+      It is equivalent to [is_kth_pow ~k:2 ~root n] but faster. *)
   val is_square : ?root:int -> int -> bool
 
   (****************************************************************************)
@@ -344,6 +375,12 @@ module Arith : sig
 
   (** [valuation_of_2] is equivalent to [valuation ~factor:2], but much faster. *)
   val valuation_of_2 : int -> int * int
+
+  (** [smallest_root n] returns [(r, k)] such that [n] = [r]{^[k]} and |[r]| is
+      minimal (which also implies that [k] is maximal).
+      [n] must be non-zero.
+      @return (1, 0) for [n] = 1, and (-1, 1) for [n] = -1. *)
+  val smallest_root : int -> int * int
 
   (** [jacobi a n] is the Jacobi symbol ([a]|[n]), provided that [n] is odd and
       positive.
