@@ -586,6 +586,9 @@ let is_pow2 n =
 let unsigned_long_ediv (a : long_int) (b : int) : int * int =
   assert (a.hi >= 0 && a.lo >= 0) ;
   assert (b > 0) ;
+  (* This internal function produces the quotient in a regular OCaml integer,
+   * thus it can overflow. It wouldn’t be hard to extend it to produce the
+   * quotient in a long_int, but we don’t need it. *)
   if a.hi >= b then
     raise Overflow
   else begin
@@ -709,6 +712,134 @@ let mul_ediv a b c =
 
 let mul_equo a b c =
   fst (mul_ediv a b c)
+
+(* Assuming that a and b are residues modulo m, returns the residue of a×b.
+ * This is the basis of [Modular.mul], so we want it to be as fast as possible.
+ * It is placed here, rather than in [Modular.ml], because we use it to
+ * implement [mul_erem] and [gcdext]. *)
+let _modular_mul ~modulo:m a b =
+  (* This is an internal function with the following assumptions: *)
+  (*! assert (m > 0) ; !*)
+  (*! assert (0 <= a && a < m) ; !*)
+  (*! assert (0 <= b && b < m) ; !*)
+  if (a lor b) <= lower_half then
+    (* Fast path: just use native arithmetic. *)
+    (a * b) mod m
+  else begin
+    (* Slow path: there are several possible methods.
+     * TODO: benchmark them and choose the best.
+     *
+     * METHOD (A): with a long division algorithm in base 2.
+     *
+     * We can use [mul_ediv] here because a and b are residues modulo m, so they
+     * are non-negative and the quotient a×b÷m does not overflow.
+     *)
+(*
+    snd (mul_ediv a b m)
+*)
+    (*
+     * METHOD (B): with a multiplication algorithm in base 2.
+     *
+     * I suspect it to be faster than (A) because, by contrast with the chunked
+     * long division, it does not perform any machine division; and by contrast
+     * with the binary long division, it does not loop on all 62 bits of the
+     * input, instead it loops over the bits of min(a,b) and skips its leading
+     * zeros. But this needs benchmarking.
+     *)
+    let ra = ref a in
+    let rb = ref b in
+    if a < b then begin
+      ra := b ;
+      rb := a ;
+    end ;
+    let res = ref 0 in
+    while !rb > 0 do
+      (*
+      if !rb mod 2 = 1 then
+        res := _add ~modulo:m !res !ra ;
+      ra := _add ~modulo:m !ra !ra ;
+      rb := !rb / 2 ;
+      *)
+      (* Inlining this code manually gives considerable speedup: *)
+      let a = !ra in
+      let b = !rb in
+      let m_a = m - a in
+      if b land 1 <> 0 then
+        res := (let r = !res in if r < m_a then r + a else r - m_a) ;
+      ra := (if a < m_a then a + a else a - m_a) ;
+      rb := b lsr 1 ;
+    done ;
+    !res
+    (* Below are older, unfruitful ideas for optimizing the modular
+     * multiplication.
+     *
+     * FIRST IDEA, I thought of computing the “low” and “high” parts of the
+     * product a × b, by piecewise multiplication, such that:
+     *
+     *     a × b = low + (high × R),    where R := 2^w = max_int + 1
+     *
+     * Then we can reduce low, high and R modulo m, and we are left computing:
+     *
+     *     a ×: b = low' +: (high' ×: R')
+     *
+     * But then how to compute the product high' ×: R' without overflowing? Does
+     * not seem simpler than the initial problem.
+     *
+     * A wild idea to further reduce high': if m is odd, then R is coprime with
+     * m, so (assuming we can do that without first having implemented the
+     * multiplication) we can pre-compute its modular inverse T := ((m+1)/2)^w
+     * (because (m+1)/2 is the modular inverse of 2). Then, we can reduce high'
+     * modulo T:
+     *
+     *     a ×: b = low' +: (high' // T) +: ((high' mod T) ×: R')
+     *
+     * But T or R' may not be small with respect to m.
+     *
+     * SECOND IDEA: take another base for the piecewise multiplication. Namely,
+     * take s = r or s = r+1, where r := isqrt(m).
+     *
+     * (1) if r² ≤ m ≤ r(r+1), take s := r; then s² = m−p where p is in 0…r.
+     * (2) if r(r+1) < m < (r+1)², take s := r+1; then s² = m+q where q is in 1…r.
+     *
+     * In both cases, all numbers x in the range 0…(m−1) can be decomposed as
+     * x := (x0 + x1.s) where x0, x1 are in the range 0…r (x0 is even in the
+     * range 0…(s−1)). Then:
+     *
+     *     a ×: b = (a0 + a1.s) ×: (b0 + b1.s)
+     *            = a0.b0 +: (a0.b1 +: a1.b0) ×: s +: (a1.b1) ×: s²
+     *
+     * where the products a0.b0, a1.b0, etc. are in the range 0…r², thus they do
+     * not overflow and are already reduced modulo m. Note that it is also the
+     * case of products such as x0.s (because x0 is in the range 0…(s-1) and
+     * (s−1)s ≤ m in both cases) and such as x1.s (because x1.s ≤ x < m).
+     *
+     * Let’s decompose the intermediate results:
+     *
+     *     (a0.b1 +: a1.b0) := A + B.s
+     *              (a1.b1) := C + D.s
+     *
+     * Then:
+     *     a ×: b = (a0 + a1.s) ×: (b0 + b1.s)
+     *            = a0.b0 +: A.s +: B ×: s² +: C ×: s² +: D.s ×: s²
+     *       if (1):
+     *            = a0.b0 +: A.s -: B.p -: C.p -: D.s ×: p
+     *       if (2):
+     *            = a0.b0 +: A.s +: B.q +: C.q +: D.s ×: q
+     *
+     * But the problem is how to compute the last product, D.s ×: p or D.S ×: q.
+     * It may be as large as r³, which may overflow. Besides, rewriting it as
+     * D ×: s³ does not help, because (r³ mod m) is not necessarily small with
+     * respect to m.
+     *
+     * What about r := icbrt(m) ?
+     *)
+  end
+
+let mul_erem a b c =
+  assert (a <> nan) ;
+  assert (b <> nan) ;
+  assert (c <> nan) ;
+  _modular_mul (erem a c) (erem b c) (abs c)
 
 (* The following implementation of the integer square root is guaranteed
  * correct, but is MUCH slower than a naive floating‐point computation. *)

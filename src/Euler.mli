@@ -234,6 +234,12 @@ module Arith : sig
       @raise Overflow when the result overflows. *)
   val mul_equo : int -> int -> int -> int
 
+  (** [mul_erem a b c] is the remainder of the Euclidean division of [a]×[b] by [c].
+      It cannot overflow.
+      If you are interested in modular arithmetic, see also {!Modular.mul}.
+      @raise Division_by_zero when [c] is null. *)
+  val mul_erem : int -> int -> int -> int
+
   (****************************************************************************)
 
   (** {2 Exponentiation and logarithms } *)
