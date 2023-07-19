@@ -342,6 +342,11 @@ module Arith : sig
       @return 0 only when [a] = [b] = 0. *)
   val gcd : int -> int -> int
 
+  (** The positive greatest common divisor of a sequence of numbers.
+      {b Complexity:} 𝒪(n × log(m)) integer divisions
+      where n is the length of the sequence and m is its maximum element. *)
+  val gcd_seq : int Seq.t -> int
+
   (** [gcdext a b] is the extended Euclidean algorithm; it returns [(d, u, v)]
       where [d] is the {e positive} greatest common divisor of [a] and [b], and
       [u] and [v] are Bézout’s coefficients, such that [u]×[a] + [v]×[b] = [d].
@@ -360,11 +365,30 @@ module Arith : sig
         {e FIXME: This must be fixed, but I don’t know how.} *)
   val gcdext : int -> int -> int * int * int
 
-  (** [lcm a b] is the lesser common multiple of [a] and [b]. Its sign is that
-      of [a]×[b].
+  (** The positive greatest common divisor of a sequence of numbers, with
+      Bézout coefficients.
+      [gcdext_seq @@ List.to_seq [ a1 ; … ; an ]] returns a pair
+      [(d, [ u1 ; … ; un ])] such that [d] is the positive greatest common
+      divisor of a{_1}, …, a{_n} and the u{_i} are coefficients such that
+      {i a{_1}·u{_1} + … + a{_n}·u{_n} = d}.
+      {b Complexity:} 𝒪(n × log(m)) integer divisions
+      where n is the length of the sequence and m is its maximum element.
+      @raise Overflow when the computation of Bézout’s coefficients provokes
+        an overflow, which may happen even if there exists a representable
+        vector of coefficients. *)
+  val gcdext_seq : int Seq.t -> int * int list
+
+  (** [lcm a b] is the lesser common multiple of [a] and [b].
+      Its sign is that of [a]×[b].
       {b Complexity:} 𝒪(log(min(|[a]|,|[b]|))) integer divisions.
-      @raise Overflow the result overflows. *)
+      @raise Overflow when the result overflows. *)
   val lcm : int -> int -> int
+
+  (** The lesser common multiple of a sequence of numbers.
+      {b Complexity:} 𝒪(n × log(m)) integer divisions
+      where n is the length of the sequence and m is its maximum element.
+      @raise Overflow when the result overflows. *)
+  val lcm_seq : int Seq.t -> int
 
   (** [valuation ~factor:d n] returns [(k, m)] such that [n] = [d]{^[k]}×[m] and
       [m] is not divisible by [d]. This assumes that [n] is not null and that

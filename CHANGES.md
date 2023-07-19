@@ -2,6 +2,7 @@
 
 - rename `Arith.mul_quo` to `mul_equo` and fix overflow
 - add `Arith.mul_ediv`
+- add `Arith.{gcd,gcdext,lcm}_seq`
 - add functions related to integer powers and roots: `Arith.is_pow`,
   `Arith.is_pow2`, `Arith.kth_root`, `Arith.is_kth_pow`, `Arith.smallest_root`
 

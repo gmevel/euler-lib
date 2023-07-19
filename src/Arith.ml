@@ -972,6 +972,17 @@ let rec gcd a b =
   else
     gcd b (a mod b)
 
+(* This is like [Seq.fold_left gcd 0 xs], except that there is a short-circuit
+ * for when the result becomes 1. *)
+let gcd_seq xs =
+  let rec gcd_aux d xs =
+    begin match xs () with
+    | Seq.Nil           -> d
+    | Seq.Cons (x, xs') -> let d' = gcd d x in if d' = 1 then 1 else gcd_aux d' xs'
+    end
+  in
+  gcd_aux 0 xs
+
 (* TODO: always return minimal [(u,v)] ? *)
 let gcdext a0 b0 =
   (*! assert (a <> nan) ; !*)
@@ -1009,6 +1020,70 @@ let gcdext a0 b0 =
   in
   gcdext a0 b0 1 0 0 1
 
+let gcdext_seq xs =
+  (* With a first [fold_left] we read the sequence from left to right,
+   * and compute the gcd d_i and associated coefficients (u_i, v_i) like so:
+   *
+   *     a1×u2 + a2×v2
+   *     \_____ _____/
+   *           v
+   *           d2
+   *           ... ×u3 + a3×v3
+   *           \______ ______/
+   *                  v
+   *                  d3
+   *                  ... ×u4 + a4×v4
+   *                  \______ ______/
+   *                         v
+   *                         d4
+   *                           .
+   *                            .
+   *                             .
+   *                                 ... ×un + an×vn
+   *                                 \______ ______/
+   *                                        v
+   *                                        dn = d
+   *
+   * Expanding the d_i recursively in these equations, the last line
+   * gives a linear combination of all the a_i with a total equal to d.
+   * With a second [fold_left], we compute the associated coefficients
+   * by collapsing the u_i and v_i from bottom-to-top (right-to-left):
+   *   - the coefficient of an     is                           vn
+   *   - the coefficient of a{n−1} is                  v{n-1} × un
+   *   - the coefficient of a{n−2} is         v{n-2} × u{n−1} × un
+   *   - …
+   *   - the coefficient of a2     is      v2 × u3 × u4 × ... × un
+   *   - the coefficient of a1     is v1 × u2 × u3 × u4 × ... × un
+   *)
+  let (d, coeff_pairs) =
+    Seq.fold_left
+      begin fun (d, coeff_pairs) x ->
+        let (d', u, v) = gcdext d x in
+        (d', (u, v)::coeff_pairs)
+      end
+      (0, [])
+      xs
+  in
+  let (_, coeffs) =
+    List.fold_left
+      begin fun (w, coeffs) (u, v) ->
+        (*! (u *? w, (v *? w) :: coeffs) !*)
+        (* We delay throwing Overflow exceptions because we might recover from
+         * it, in the event that the overflowing expression is later multiplied
+         * by zero. We record that an overflow occurred in [w] by using the
+         * special value [nan]. *)
+        if w <> nan then
+          ((try u *? w with Overflow -> nan), (v *? w) :: coeffs)
+        else if v = 0 then
+          ((if u = 0 then 0 else nan), 0 :: coeffs)
+        else
+          raise Overflow
+      end
+      (1, [])
+      coeff_pairs
+  in
+  (d, coeffs)
+
 let lcm a b =
   assert (a <> nan) ;
   assert (b <> nan) ;
@@ -1016,6 +1091,24 @@ let lcm a b =
     0
   else
     a / gcd a b *? b
+
+(* This is like [Seq.fold_left lcm 1 xs], except that there is a short-circuit
+ * for when the result becomes 0, and that this short-circuit may avoid
+ * overflows. *)
+let lcm_seq xs =
+  let rec lcm_aux m xs =
+    begin match xs () with
+    | Seq.Nil           -> m
+    | Seq.Cons (x, xs') ->
+        if x = 0 then 0
+        else
+          begin match lcm m x with
+          | m'                 -> lcm_aux m' xs'
+          | exception Overflow -> if Seq.exists ((=) 0) xs' then 0 else raise Overflow
+          end
+    end
+  in
+  lcm_aux 1 xs
 
 let valuation ~factor:d n =
   (*! assert (d <> nan) ; !*)
