@@ -187,9 +187,24 @@ module Arith : sig
       divisor. *)
   val div_exact : int -> int -> int
 
-  (** [ediv a b] is the Euclidean division of [a] by [b]; it returns [(q, r)]
-      such that [a] = [b]×[q] + [r] and 0 ≤ [r] < [b]. By contrast with division
-      from the standard library, the remainder is never negative.
+  (** [sdiv a b] is the “signed” division of [a] by [b];
+      it returns [(q, r)] such that [a] = [b]×[q] + [r] and |[r]| < |[a]|
+      and [r] is of the same sign as [a].
+
+      This is the standard library’s division. However, using [sdiv] is better
+      than computing both [Stdlib.(a / b)] and [Stdlib.(a mod b)] separately,
+      because [sdiv] spares one machine division, which is much more costly than
+      a multiplication.
+
+      [sdiv] is slightly faster than {!ediv}, so it is also useful when we don’t
+      need the remainder to be positive or when we know that [a ≥ 0].
+
+      @raise Division_by_zero when [b] is null. *)
+  val sdiv : int -> int -> int * int
+
+  (** [ediv a b] is the Euclidean division of [a] by [b];
+      it returns [(q, r)] such that [a] = [b]×[q] + [r] and 0 ≤ [r] < [b].
+      By contrast with {!sdiv}, the remainder is never negative.
       @raise Division_by_zero when [b] is null. *)
   val ediv : int -> int -> int * int
 

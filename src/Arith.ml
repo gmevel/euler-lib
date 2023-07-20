@@ -350,11 +350,15 @@ let div_exact a b =
   else
     raise Division_not_exact
 
-let ediv a b =
+let sdiv a b =
   assert (a <> nan) ;
   assert (b <> nan) ;
   let q = a / b in
   let r = a - q * b in
+  (q, r)
+
+let ediv a b =
+  let (q, r) = sdiv a b in
   if r >= 0 then
     (q, r)
   else
@@ -364,10 +368,7 @@ let ediv a b =
  * The same remark applies to equo and erem below. *)
 (*
 let ediv a b =
-  assert (a <> nan) ;
-  assert (b <> nan) ;
-  let q = a / b in
-  let r = a - q * b in
+  let (q, r) = sdiv a b in
   let u = r asr Sys.int_size in
   (* u is 0 if r >= 0 and −1 if r < 0 *)
   (q - (u land sign b), r + (u land abs b))
@@ -632,7 +633,7 @@ let unsigned_long_ediv (a : long_int) (b : int) : int * int =
       while !i >= 0 do
         (*! assert (0 <= !r && !r < b) ; !*)
         let r' = (!r lsl chunk_size) lor ((a.lo lsr !i) land chunk_mask) in
-        let (q1, r1) = ediv r' b in
+        let (q1, r1) = sdiv r' b in
         (*! assert (0 <= q1 && q1 < chunk_base) ; !*)
         q := (!q lsl chunk_size) lor q1 ;
         r := r1 ;
@@ -644,7 +645,7 @@ let unsigned_long_ediv (a : long_int) (b : int) : int * int =
         let tail_mask = tail_base - 1 in
         (*! assert (0 <= !r && !r < b) ; !*)
         let r' = (!r lsl tail_size) lor (a.lo land tail_mask) in
-        let (q1, r1) = ediv r' b in
+        let (q1, r1) = sdiv r' b in
         (*! assert (0 <= q1 && q1 < tail_base) ; !*)
         q := (!q lsl tail_size) lor q1 ;
         r := r1 ;
@@ -1131,8 +1132,8 @@ let _overflowing_gcdext a0 b0 =
       else
         (~-a, ~-u, ~-v)
     end else begin
-      let q = a / b in
-      gcdext b (a mod b) x y (u -? q *? x) (v -? q *? y)
+      let (q, r) = sdiv a b in
+      gcdext b r x y (u -? q *? x) (v -? q *? y)
     end
   in
   gcdext a0 b0 1 0 0 1
@@ -1172,8 +1173,9 @@ let _modular_gcdext ~modulo:m b0 =
    *)
   let rec gcdext a b v y =
     if b >= 2 then
-      (* Here [a/b < m] since [b ≥ 2], so we can avoid computing [a/b mod m]: *)
-      gcdext b (a mod b) y (_modular_sub ~modulo:m v (_modular_mul ~modulo:m (a/b) y))
+      let (q, r) = sdiv a b in
+      (* Here [q < m] since [b ≥ 2], so we can avoid computing [q mod m]: *)
+      gcdext b r y (_modular_sub ~modulo:m v (_modular_mul ~modulo:m q y))
     else if b = 1 then
       (1, y)
     else (* b = 0 *)
@@ -1225,7 +1227,7 @@ let _gcdext_aux a b =
       (* Reduce the Bézout pair to the following range:
        *     −b' < u1 ≤ 0
        *      0  ≤ v1 < a' *)
-      let (q, v1) = ediv v0 a' in
+      let (q, v1) = sdiv v0 a' in
       let u1 = u0 + q * b' in
       (a', b', d, u1, v1)
     with Overflow ->
@@ -1383,9 +1385,14 @@ let valuation ~factor:d n =
   assert (n <> 0) ;
   let k = ref 0 in
   let m = ref n in
-  while !m mod d = 0 do
+  let m' = ref 0 in
+  while
+    let (q, r) = sdiv !m d in
+    m' := q ;
+    r = 0
+  do
     incr k ;
-    m := !m / d ;
+    m := !m' ;
   done ;
   (!k, !m)
 
@@ -1505,11 +1512,15 @@ let smallest_root =
         Array.iter begin fun p ->
           if !v <> 0 && !v < p then
             raise Break ;
-          while !v mod p = 0 &&
-                (s := kth_root ~k:p !r ; is_kth_pow ~k:p ~root:!s !r) do
+          let v' = ref 0 in
+          while
+            let (qv, rv) = sdiv !v p in
+            v' := qv ;
+            rv = 0 && (s := kth_root ~k:p !r ; is_kth_pow ~k:p ~root:!s !r)
+          do
             r := !s ;
             k := !k * p ;
-            v := !v / p ;
+            v := !v' ;
           done ;
         end
       with Break -> () end ;

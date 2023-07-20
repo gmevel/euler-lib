@@ -73,8 +73,9 @@ let[@inline] div ~modulo:m a b =
 
 let _div_nonunique ~modulo:m a b =
   let (d, v) = _gcdext ~modulo:m b in
-  if a mod d = 0 then
-    _mul ~modulo:m (a / d) v
+  let (a', r) = Arith.sdiv a d in
+  if r = 0 then
+    _mul ~modulo:m a' v
   else
     raise Division_by_zero
 let[@inline] div_nonunique ~modulo:m a b =

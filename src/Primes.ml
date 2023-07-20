@@ -32,7 +32,7 @@ fun x ->
   let term = ref (~-. 2.0 *. sqrt x) in
   let sum_of_inverses = ref 0.0 in
   let n = ref 1 in while
-    if !n mod 2 = 1 then sum_of_inverses := !sum_of_inverses +. 1. /. float !n ;
+    if !n land 1 <> 0 then sum_of_inverses := !sum_of_inverses +. 1. /. float !n ;
     term := !term *. log_x *. ~-. 0.5 /. float !n ;
     s := !s +. !term *. !sum_of_inverses ;
     abs_float !term > precision
@@ -1237,10 +1237,11 @@ let rec lenstra_factors ~tries ~max_fact n =
   else begin
     begin match lenstra_find_factor ~tries ~max_fact n with
     | d ->
-        assert (n mod d = 0 && d <> 1 && d <> n) ;
+        let (q, _r) = Arith.sdiv n d in
+        assert (_r = 0 && d <> 1 && d <> n) ;
         merge_factors
           (lenstra_factors ~tries ~max_fact d)
-          (lenstra_factors ~tries ~max_fact (n/d))
+          (lenstra_factors ~tries ~max_fact q)
         (* Note: Very often, d is prime, but not always (for example,
          * n = 3577522661351062530 often yields a non‐prime factor). *)
     | exception Not_found ->
