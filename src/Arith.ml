@@ -1732,6 +1732,8 @@ let ( / ) = div_exact
 let ( // ) = equo
 let ( /% ) = erem
 let ( mod ) = erem
+let ( ** ) = pow
+let ( **. ) = Float.pow
 
 module Unsafe = struct
   let ( +! ) = Stdlib.( + )

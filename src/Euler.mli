@@ -567,6 +567,14 @@ module Arith : sig
   (** Same. *)
   val ( mod ) : int -> int -> int
 
+  (** Infix notation for {!pow}. Note that this overrides the standard
+      library’s notation for floating-point exponentiation.
+      Thus we re-expose the latter with the notation {! ( **. )}. *)
+  val ( ** ) : int -> int -> int
+
+  (** New infix notation for [Stdlib.( ** )], the floating-point exponentiation. *)
+  val ( **. ) : float -> float -> float
+
   (** Module [Unsafe] gives access to the old operations for when we know what
       we are doing (i.e. we know that a given operation cannot overflow) and we
       absolutely don’t want to pay for the overhead of the safe functions.

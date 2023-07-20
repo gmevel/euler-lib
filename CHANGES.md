@@ -1,5 +1,6 @@
 # 0.3
 
+- add notation `Arith.( ** )` for integer exponentiation
 - add `Arith.sdiv`
 - rename `Arith.mul_quo` to `mul_equo` and fix overflow
 - add `Arith.mul_{ediv,erem}`
