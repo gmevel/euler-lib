@@ -517,7 +517,7 @@ module Arith : sig
 
   (** [range_down ~from ~til] are the integers from [from] {e down} to [til]+1.
       In other words it is [range' ~step:~-1 ~from ~til ()]. *)
-  val range : from:int -> til:int -> int Seq.t
+  val range_down : from:int -> til:int -> int Seq.t
 
   (** [range0 n] are the [n] integers from 0 up to [n]−1.
       In other words, it is [range ~from:0 ~til:n]. *)

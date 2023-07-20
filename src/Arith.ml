@@ -1680,10 +1680,9 @@ let rand_signed ?(max=max_int) () =
  * [til = nan] is allowed, to mean “infinity” (i.e [max_int]+1 when [step] > 0,
  * or [min_int]−1 when [step] < 0). For this to work, we need the helper
  * function [nonempty_range_up] to have its upper bound inclusive (because with
- * exclusive bounds, the comparison [from < til] breaks). However
- * [nonempty_range_down]
- * still needs an exclusive bound (the comparison [rom >= to_] would break when
- * [to_ = max_int+1 = nan]).
+ * exclusive bounds, the comparison [from < til] breaks).
+ * However [nonempty_range_down] still needs an exclusive bound (the comparison
+ * [from >= to_] would break when [to_ = max_int+1 = nan]).
  *)
 let rec nonempty_range_up ~step ~from ~prev_to () =
   (*! assert (step > 0) ; !*)
