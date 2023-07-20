@@ -50,13 +50,7 @@ let[@inline] mul ~modulo:m a b =
 (* We compute the modular inverse using an extended Euclidean algorithm.
  * [_modular_gcdext ~modulo:m b] returns a pair [(d, v)] where [1 ≤ d ≤ m] is
  * the GCD of [m] and [b], and [0 ≤ v < m] is such that [d = v·b  (mod m)].
- * When [b = 0], it returns [d = m]. Such a [v] is defined modulo [m/d].
- *
- * TODO: Can we always return a [v] that is invertible modulo [m]? I’m under the
- * impression that we can, and that either the smallest or the largest non-null
- * representative (whichever is closest to a multiple of [m]) is invertible, but
- * I’m not sure how to prove it at the moment.
- *)
+ * When [b = 0], it returns [d = m]. Such a [v] is defined modulo [m/d]. *)
 let[@inline] _gcdext ~modulo:m b =
   Arith._modular_gcdext ~modulo:m b
 
