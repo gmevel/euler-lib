@@ -251,7 +251,9 @@ module Arith : sig
 
   (** [mul_erem a b c] is the remainder of the Euclidean division of [a]×[b] by [c].
       It cannot overflow.
+
       If you are interested in modular arithmetic, see also {!Modular.mul}.
+
       @raise Division_by_zero when [c] is null. *)
   val mul_erem : int -> int -> int -> int
 
@@ -550,7 +552,7 @@ module Arith : sig
 
   (** Infix notation for {!div_exact}. Note that this is more restrictive than
       the usual division from the standard library; this forces us to realize
-      when we are doing a non-exact division, for which we must write [//]. *)
+      when we are doing a non-exact division, for which we must write {! (//)}. *)
   val ( / ) : int -> int -> int
 
   (** Infix notation for {!equo}. Note that this is not the same as [Stdlib.(/)]
