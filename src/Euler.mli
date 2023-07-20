@@ -358,18 +358,20 @@ module Arith : sig
       where [d] is the {e positive} greatest common divisor of [a] and [b], and
       [u] and [v] are Bézout’s coefficients, such that [u]×[a] + [v]×[b] = [d].
       Bézout’s coefficients [(u, v)] are defined modulo [(b/d, −a/d)].
-      Furthermore, if [a], [b] ≠ 0, there exists a pair of coefficients such that:
-      - 0 < [u] ≤ |[b/d]|
-      - −|[a/d]| < [v] ≤ 0
 
-      In particular, when [a] and [b] are representable, there always exists
-      a representable pair of coefficients.
+      If [a] ≠ 0, [b] ≠ 0 and |[a]| ≠ |[b]|,
+      then this function returns the unique pair of coefficients
+      whose magnitude is minimal; this pair is in the following range
+      (in particular, the function never overflows):
+
+      - |[u]| ≤ ½|[b/d]|
+      - |[v]| ≤ ½|[a/d]|
+
+      In the edge cases ([a] = 0 or [b] = 0 or |[a]| = |[b]|),
+      it returns [(u, v)] = (0, 0) or (±1, 0) or (0, ±1).
 
       {b Complexity:} 𝒪(log(min(|[a]|,|[b]|))) integer divisions.
-      @return [d] = 0 only when [a] = [b] = 0.
-      @raise Overflow when the computation of Bézout’s coefficients provokes
-        an overflow, even though there exists a representable pair of coefficients.
-        {e FIXME: This must be fixed, but I don’t know how.} *)
+      @return [d] = 0 only when [a] = [b] = 0. *)
   val gcdext : int -> int -> int * int * int
 
   (** The positive greatest common divisor of a sequence of numbers, with

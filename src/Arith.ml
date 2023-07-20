@@ -1114,8 +1114,12 @@ let gcd_seq xs =
   in
   gcd_aux 0 xs
 
-(* TODO: always return minimal [(u,v)] ? *)
-let gcdext a0 b0 =
+(* This is a straightforward implementation of the extended Euclidean algorithm.
+ * Unfortunately, computing the Bézout’s coefficients may overflow, which is
+ * a shame because there always exists a pair of representable coefficients
+ * within integer boundaries. Below, we will use a more convoluted version to
+ * avoid overflows, and we will also minimize the returned coefficients. *)
+let _overflowing_gcdext a0 b0 =
   (*! assert (a <> nan) ; !*)
   (*! assert (b <> nan) ; !*)
   let rec gcdext a b u v x y =
@@ -1128,28 +1132,156 @@ let gcdext a0 b0 =
         (~-a, ~-u, ~-v)
     end else begin
       let q = a / b in
-      (* FIXME: Avoid overflows in intermediate values for computing the Bézout
-       * coefficients (use zarith? prove that somehow we compute the smallest
-       * coefficients possible and that there are in fact no overflows?).
-       * IDEA: Use [Modular.gcdext]! Assuming [0 ≤ b < a], it gives us the GCD
-       * [d] and a coefficient [0 ≤ v < a], defined modulo [a/d], such that:
-       *     v·b = d + u·a  for some u
-       * Then we can deduce the coefficient [u]:
-       *     u = (v·b − d) / a = (v·(b/d) − 1) / (a/d)
-       * Since [0 ≤ b < a] and [0 ≤ v], we have:
-       *     0 ≤ u < v < a
-       * Thus, since [a] fits in a native integer, then so do [u] and [v].
-       * Since we know that all possible [v] are defined modulo [a/d], we can
-       * even minimize [v], i.e. take the unique [v] in the range [0 ≤ v < a/d].
-       * In that case, we get:
-       *     0 ≤ u < b/d
-       * so we have also minimized [u].
-       * The remaining question is how to compute [(v·b − d) / a] without
-       * overflowing. *)
       gcdext b (a mod b) x y (u -? q *? x) (v -? q *? y)
     end
   in
   gcdext a0 b0 1 0 0 1
+
+(* Assuming that [a] and [b] are residues modulo [m], this is the modular
+ * subtraction. We need it for the modular GCD algorithm just below. *)
+let _modular_sub ~modulo:m a b =
+  (* This is an internal function with the following assumptions: *)
+  (*! assert (m > 0) ; !*)
+  (*! assert (0 <= a && a < m) ; !*)
+  (*! assert (0 <= b && b < m) ; !*)
+  if a >= b then a - b else a + (m - b)
+
+(* To avoid overflows in [gcdext], we rely on a modular variant of the extended
+ * Euclidean algorithm. In this version, we compute a coefficient modulo [m],
+ * thus there is no overflow.
+ *
+ * This is also useful for computing modular inverses (see [Modular.inv]).
+ *
+ * [_modular_gcdext ~modulo:m b] returns a pair [(d, v)] where [1 ≤ d ≤ m] is
+ * the GCD of [m] and [b], and [0 ≤ v < m] is such that [d = v·b  (mod m)].
+ * When [b = 0], it returns [d = m]. Such a [v] is defined modulo [m/d].
+ *)
+let _modular_gcdext ~modulo:m b0 =
+  (* This is an internal function with the following assumptions: *)
+  (*! assert (m > 0) ; !*)
+  (*! assert (0 <= b0 && b0 < m) ; !*)
+  (* This is an adaptation of the code of [overflowing_gcdext]. By contrast with
+   * the latter, we do not return [u], so we need neither parameter [u] nor [x].
+   *
+   * Invariants:
+   *   0 ≤ b < a ≤ m
+   *   a = v·b0  (mod m)
+   *   b = y·b0  (mod m)
+   *   0 ≤ v < m
+   *   0 ≤ y < m  unless m = 1
+   *)
+  let rec gcdext a b v y =
+    if b >= 2 then
+      (* Here [a/b < m] since [b ≥ 2], so we can avoid computing [a/b mod m]: *)
+      gcdext b (a mod b) y (_modular_sub ~modulo:m v (_modular_mul ~modulo:m (a/b) y))
+    else if b = 1 then
+      (1, y)
+    else (* b = 0 *)
+      (a, v)
+  in
+  gcdext m b0 0 1
+
+(* Our complete extended Euclidean algorithm uses [_modular_gcdext] as follows.
+ * Assuming [0 < b < a], [_modular_gcdext ~modulo:a b] gives us the GCD [d] and
+ * a coefficient [0 ≤ v < a] such that:
+ *     v·b = d − u·a  for some u
+ * Then we can deduce the matching coefficient [u]:
+ *     −u = (v·b − d) / a = (v·(b/d) − 1) / (a/d)
+ * Since [0 ≤ b < a] and [0 ≤ v], we have:
+ *     0 ≤ −u < v < a
+ * Thus, since [a] fits in a native integer, then so do [u] and [v].
+ *
+ * Moreover, all possible Bézout pairs (u,v) are equal modulo (b/d, −a/d),
+ * so we can take the unique [v] in the range [0 ≤ v < a/d]. In that case
+ * (still assuming [0 < b < a]), we also get:
+ *     0 ≤ −u < b/d
+ * so this allows us to minimize both [u] and [v].
+ *
+ * To compute [u] effectively, we may try to use the formula [u = (d − v·b) / a],
+ * but this expression may overflow ([mul_ediv] might help, though?)…
+ * Alternatively, we can use [_modular_gcdext] again! We get a coefficient [u]
+ * such that:
+ *      u·a = d (mod b)
+ * A priori, that [u] is decoupled from our [v], but we have enough info to
+ * build a Bézout pair (u1,v1) from [u] and [v]:
+ *   - [u] tells us the class modulo [b/d] of [u1];
+ *   - [v] tells us the class modulo [a/d] of [v1];
+ *   - from what we have said earlier, there is a unique Bézout pair (u1,v1)
+ *     such that:
+ *         −b/d < u1 ≤ 0
+ *            0 ≤ v1 < a/d
+ *)
+let _gcdext_aux a b =
+  (* This is an internal function with the following assumption: *)
+  (*! assert (0 < b && b < a) ; !*)
+  let (a', b', d, u1, v1) =
+    begin try
+      (* First, try the faster procedure, which may overflow
+       * ([_overflowing_gcdext] works for arbitrary [a] and [b], but the
+       * subsequent minimization assumes [0 < b < a]). *)
+      let (d, u0, v0) = _overflowing_gcdext a b in
+      let a' = a / d in
+      let b' = b / d in
+      (* Reduce the Bézout pair to the following range:
+       *     −b' < u1 ≤ 0
+       *      0  ≤ v1 < a' *)
+      let (q, v1) = ediv v0 a' in
+      let u1 = u0 + q * b' in
+      (a', b', d, u1, v1)
+    with Overflow ->
+      (* In case of overflow, we fallback to the heavier procedure with modular
+       * arithmetic. *)
+      let (d, v0) = _modular_gcdext ~modulo:a b in
+      let a' = a / d in
+      let b' = b / d in
+      (* Reduce [v], then compute the unique associated [u] such that:
+       *     −b' < u1 ≤ 0
+       *      0  ≤ v1 < a' *)
+      let v1 = erem v0 a' in
+      let u1 =
+        begin try
+          (1 - v1 *? b') / a'
+          (* TODO: benchmark a solution that uses [unsigned_long_{mul,ediv}]. *)
+        with Overflow ->
+          (* Here it is required that we have reduced [v1] before computing [u1]
+           * because, otherwise, we don’t have unicity to guarantee us that the
+           * computed [u1] matches [v1]. *)
+          let (_d', u) = _modular_gcdext ~modulo:b' (a' mod b') in
+          (*! assert (_d' = 1) ; !*)
+          if u = 0 then 0 else u - b'
+        end
+      in
+      (a', b', d, u1, v1)
+    end
+  in
+  (* The Bézout pair (u1, v1) is in this reduced range: *)
+  (*! assert (-b' < u1 && u1 <= 0) ; !*)
+  (*! assert ( 0  < v1 && v1 <  a') ; (* v1 ≠ 0 because b < a *) !*)
+  (*! assert (-u1 < v1) ; !*)
+  (*! assert (u1 <> 0 || v1 = 1) ; (* because b ≠ 0 *) !*)
+  (*! assert (d = u1*a + v1*b) ; !*)
+  (* We further reduce it to the following range:
+   *     |u2| ≤ b'/2
+   *     |v2| ≤ a'/2 *)
+  let (u2, v2) = (if v1 <= a' lsr 1 then (u1, v1) else (u1 + b', v1 - a')) in
+  (*! assert (abs u2 <= b'/2) ; !*)
+  (*! assert (abs v2 <= a'/2) ; !*)
+  (*! assert (d = u2*a + v2*b) ; !*)
+  (d, u2, v2)
+
+let gcdext a0 b0 =
+  let a = abs a0
+  and b = abs b0 in
+  if a = b || b = 0 then
+    (a, sign a0, 0)
+  else if a = 0 then
+    (b, 0, sign b0)
+  else if a < b then
+    let (d, v, u) = _gcdext_aux b a in
+    (d, mul_sign a0 u, mul_sign b0 v)
+  else
+    let (d, u, v) = _gcdext_aux a b in
+    (d, mul_sign a0 u, mul_sign b0 v)
 
 let gcdext_seq xs =
   (* With a first [fold_left] we read the sequence from left to right,
@@ -1202,7 +1334,10 @@ let gcdext_seq xs =
         (* We delay throwing Overflow exceptions because we might recover from
          * it, in the event that the overflowing expression is later multiplied
          * by zero. We record that an overflow occurred in [w] by using the
-         * special value [nan]. *)
+         * special value [nan].
+         *
+         * We minimize the risk of an overflow by relying on the fact that
+         * [gcdext] returns coefficients whose magnitude are minimal. *)
         if w <> nan then
           ((try u *? w with Overflow -> nan), (v *? w) :: coeffs)
         else if v = 0 then

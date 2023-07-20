@@ -47,40 +47,18 @@ let[@inline] mul ~modulo:m a b =
   assert (0 <= b && b < m) ;
   _mul ~modulo:m a b
 
-(* We compute the modular inverse using an extended Euclidean algorithm. We
- * reimplement the algorithm instead of using [Arith.gcdext] directly because
- * in the latter function Bézout’s coefficients can overflow, whereas we are
- * only interested in their class modulo [m].
- * [gcdext ~modulo:m b] returns a pair [(d, v)] where [1 ≤ d ≤ m] is the GCD of
- * [m] and [b], and [0 ≤ v < m] is such that [d = v·b  (mod m)]. It never fails;
- * when [b = 0], it returns [d = m].
- * Such a [v] is defined modulo [m/d].
- * TODO: always return minimal [v]?
+(* We compute the modular inverse using an extended Euclidean algorithm.
+ * [_modular_gcdext ~modulo:m b] returns a pair [(d, v)] where [1 ≤ d ≤ m] is
+ * the GCD of [m] and [b], and [0 ≤ v < m] is such that [d = v·b  (mod m)].
+ * When [b = 0], it returns [d = m]. Such a [v] is defined modulo [m/d].
+ *
  * TODO: Can we always return a [v] that is invertible modulo [m]? I’m under the
  * impression that we can, and that either the smallest or the largest non-null
  * representative (whichever is closest to a multiple of [m]) is invertible, but
  * I’m not sure how to prove it at the moment.
  *)
-let _gcdext ~modulo:m b0 =
-  (* By contrast with [Arith.gcdext], we are not interested in returning [u], so
-   * we need neither parameter [u] nor [x].
-   * Invariants:
-   *   0 ≤ b < a ≤ m
-   *   a = v·b0  (mod m)
-   *   b = y·b0  (mod m)
-   *   0 ≤ v < m
-   *   0 ≤ y < m  unless m = 1
-   *)
-  let rec gcdext a b v y =
-    if b >= 2 then
-      (* Here [a/b < m] since [b ≥ 2], so we can avoid computing [a/b mod m]: *)
-      gcdext b (a mod b) y (_sub ~modulo:m v (_mul ~modulo:m (a/b) y))
-    else if b = 1 then
-      (1, y)
-    else (* b = 0 *)
-      (a, v)
-  in
-  gcdext m b0 0 1
+let[@inline] _gcdext ~modulo:m b =
+  Arith._modular_gcdext ~modulo:m b
 
 let _inv ~modulo:m b =
   let (d, v) = _gcdext ~modulo:m b in
