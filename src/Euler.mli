@@ -146,8 +146,8 @@ module Arith : sig
       overflow.
       Beware that the input sequence is read twice. If that is undesirable, use
       [Seq.memoize] (OCaml 4.14).
-      {b Complexity:} time 𝒪([n]), space 𝒪(1)
-      where [n] is the length of the sequence.
+      {b Complexity:} time 𝒪({i n}), space 𝒪(1)
+      where {i n} is the length of the sequence.
       @raise Overflow when the result overflows. *)
   val sum_seq : int Seq.t -> int
 
@@ -172,8 +172,8 @@ module Arith : sig
       overflow (this situation only happens when one of the operands is zero).
       Every operand is read at most once;
       when an operand is zero, following operands are not read.
-      {b Complexity:} time 𝒪([n]), space 𝒪(1)
-      where [n] is the length of the sequence.
+      {b Complexity:} time 𝒪({i n}), space 𝒪(1)
+      where {i n} is the length of the sequence.
       @raise Overflow when the result overflows. *)
   val prod_seq : int Seq.t -> int
 
@@ -197,7 +197,7 @@ module Arith : sig
       a multiplication.
 
       [sdiv] is slightly faster than {!ediv}, so it is also useful when we don’t
-      need the remainder to be positive or when we know that [a ≥ 0].
+      need the remainder to be positive or when we know that [a] ≥ 0.
 
       @raise Division_by_zero when [b] is null. *)
   val sdiv : int -> int -> int * int
@@ -305,8 +305,8 @@ module Arith : sig
   val log2sup : int -> int
 
   (** [is_pow ~base ~exp n] is true if and only if [n] = [base]{^[exp]}.
-      When [exp] is omitted, [is_kth_pow ~base n] says whether [n] is a power of
-      [base].
+      When [exp] is omitted, [is_kth_pow ~base n] says whether [n] is some power
+      of [base].
       When [exp] is provided, it is equivalent to {!is_kth_pow}[ ~k:exp ~root:base n].
       The default base is 10. *)
   val is_pow : ?base:int -> ?exp:int -> int -> bool
@@ -355,10 +355,10 @@ module Arith : sig
       but returns [true] when [a] = 0 and [b] = 0. *)
   val is_multiple : of_:int -> int -> bool
 
-  (** [is_even a] is equivalent to [is_multiple ~of_:2 a]. *)
+  (** [is_even a] is equivalent to [is_multiple ~of_:2 a] but faster. *)
   val is_even : int -> bool
 
-  (** [is_odd a] is equivalent to [not (is_multiple ~of_:2 a)]. *)
+  (** [is_odd a] is equivalent to [not (is_multiple ~of_:2 a)] but faster. *)
   val is_odd : int -> bool
 
   (** [gcd a b] is the {e positive} greatest common divisor of [a] and [b].
@@ -367,8 +367,8 @@ module Arith : sig
   val gcd : int -> int -> int
 
   (** The positive greatest common divisor of a sequence of numbers.
-      {b Complexity:} 𝒪(n × log(m)) integer divisions
-      where n is the length of the sequence and m is its maximum element. *)
+      {b Complexity:} 𝒪({i n} × log({i m})) integer divisions
+      where {i n} is the length of the sequence and {i m} is its maximum element. *)
   val gcd_seq : int Seq.t -> int
 
   (** [gcdext a b] is the extended Euclidean algorithm; it returns [(d, u, v)]
@@ -395,10 +395,12 @@ module Arith : sig
       Bézout coefficients.
       [gcdext_seq @@ List.to_seq [ a1 ; … ; an ]] returns a pair
       [(d, [ u1 ; … ; un ])] such that [d] is the positive greatest common
-      divisor of a{_1}, …, a{_n} and the u{_i} are coefficients such that
-      {i a{_1}·u{_1} + … + a{_n}·u{_n} = d}.
-      {b Complexity:} 𝒪(n × log(m)) integer divisions
-      where n is the length of the sequence and m is its maximum element.
+      divisor of {i a{_1}, …, a{_n}}, and the {i u{_i}} are coefficients such that
+      {i a{_1}×u{_1} + … + a{_n}×u{_n} = d}.
+
+      {b Complexity:} 𝒪({i n} × log({i m})) integer divisions
+      where {i n} is the length of the sequence and {i m} is its maximum element.
+
       @raise Overflow when the computation of Bézout’s coefficients provokes
         an overflow, which may happen even if there exists a representable
         vector of coefficients. *)
@@ -411,8 +413,8 @@ module Arith : sig
   val lcm : int -> int -> int
 
   (** The lesser common multiple of a sequence of numbers.
-      {b Complexity:} 𝒪(n × log(m)) integer divisions
-      where n is the length of the sequence and m is its maximum element.
+      {b Complexity:} 𝒪({i n} × log({i m})) integer divisions
+      where {i n} is the length of the sequence and {i m} is its maximum element.
       @raise Overflow when the result overflows. *)
   val lcm_seq : int Seq.t -> int
 
@@ -454,7 +456,7 @@ module Arith : sig
       @raise Overflow when the result overflows. *)
   val binom : int -> int -> int
 
-  (** [central_binom p] is the [p]{^th} element of the 2×[p]{^th} row of
+  (** [central_binom p] is the [p]{^th} element of the (2×[p]){^th} row of
       Pascal’s triangle, provided that 0 ≤ [p].
       {b Complexity:} time 𝒪([p]), space 𝒪(1).
       @raise Overflow when the result overflows.
@@ -597,9 +599,9 @@ module Modular : sig
   (** Modular arithmetic.
 
       This module defines modular arithmetic operations, that is, operations on
-      elements of the ring ℤ∕mℤ where m is a positive integer, called the
-      modulus. All operations take m as a named parameter [~modulo]. Elements of
-      ℤ∕mℤ are represented by their canonical representatives between 0 and m−1
+      elements of the ring ℤ∕{i m}ℤ where {i m} is a positive integer, called the
+      modulus. All operations take {i m} as a named parameter [~modulo]. Elements of
+      ℤ∕{i m}ℤ are represented by their canonical representatives between 0 and m−1
       (included), of type [int]. All functions may assume that the modulus is
       positive and that canonical representatives are used, and may raise
       [Assert_failure] if that is not the case.
@@ -686,10 +688,10 @@ module Modular : sig
       and time costs. *)
   module Make : (sig val modulo : int end) -> sig
 
-    (** The (positive) modulus m. *)
+    (** The (positive) modulus {i m}. *)
     val modulo : int
 
-    (** The type of an element of the ring ℤ∕mℤ. *)
+    (** The type of an element of the ring ℤ∕{i m}ℤ. *)
     type t = private int
 
     val of_int : int -> t
@@ -723,7 +725,7 @@ module Modular : sig
     (** Modular division. *)
     val ( /: ) : t -> t -> t
 
-    (** This is {!Modular.div_nonunique}[ ~modulo]. “Divide, just divide.” *)
+    (** This is {!Modular.div_nonunique}[ ~modulo]. *)
     val ( //: ) : t -> t -> t
 
     (** This is {!Modular.inv_factorize}[ ~modulo]. *)
@@ -810,8 +812,8 @@ module Primes : sig
 
   (** {2 Prime number count}
 
-      The number π(x) of prime numbers less than x is asymptotically equivalent
-      to x ∕ ln(x). It is also equivalent to li(x), where li is the
+      The number π({i x}) of prime numbers less than x is asymptotically equivalent
+      to {i x} ∕ ln({i x}). It is also equivalent to li(x), where li is the
       {{: https://en.wikipedia.org/wiki/Logarithmic_integral_function}
       logarithmic integral function}, which gives a much more precise
       estimation.
@@ -937,10 +939,11 @@ module Primes : sig
       itself) in ascending order, provided that [n] is positive. *)
   val divisors : ?factors:factorization -> int -> int list
 
-  (** [gen_divisor_pairs n] returns all pairs (d, [n]/d) where d divides [n] and
-      1 ≤ d ≤ √[n], provided that [n] is positive. Pairs are presented in
-      ascending order of d. When [n] is a perfect square, the pair (√[n], √[n])
-      is presented only once. *)
+  (** [gen_divisor_pairs n] returns all pairs ({i d}, [n]/{i d})
+      where d divides [n] and 1 ≤ {i d} ≤ √[n],
+      provided that [n] is positive.
+      Pairs are presented in ascending order of {i d}.
+      When [n] is a perfect square, the pair (√[n], √[n]) is presented once. *)
   val gen_divisor_pairs : ?factors:factorization -> int -> (int * int) Seq.t
 
 end (* module Primes *)
