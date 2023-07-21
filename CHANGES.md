@@ -12,6 +12,7 @@
   `Arith.is_pow2`, `Arith.kth_root`, `Arith.is_kth_pow`, `Arith.smallest_root`
 - fix `Arith.range_down` not being exposed in the interface
 - add `Primes.divisor_pairs`
+- add `Primes.sum_of_divisors`
 - add `Primes.jordan`
 - add `Primes.carmichael`
 - add `Primes.mobius`

@@ -1298,6 +1298,26 @@ let number_of_divisors =
   with_factors @@ fun factors _ ->
     List.fold_left (fun m (_, k) -> m * (k+1)) 1 factors
 
+let sum_of_divisors ?(k=1) =
+  assert (k >= 0) ;
+  if k = 0 then number_of_divisors
+  else
+  with_factors @@ fun factors _n ->
+    let open! Arith in
+    List.fold_left begin fun m (p, v) ->
+        (* We want to multiply m with
+         *     1 + p^k + p^2k + … + p^vk  =  (p^{(v+1)k} − 1) / (p^k − 1)
+         * but there might be a spurious overflow in this numerator (because the
+         * numerator is larger than the final result). To avoid it, we put the
+         * last term of the sum apart:
+         *     (1 + p^k + p^2k + …) + p^vk  =  (p^vk − 1) / (p^k − 1) + p^vk
+         *)
+        let pk = Arith.pow p k in
+        let pkv = Arith.pow pk v in
+        m * (pred pkv / pred pk + pkv)
+      end
+      1 factors
+
 let divisors =
   with_factors @@ fun factors _ ->
     let divisors = ref [] in

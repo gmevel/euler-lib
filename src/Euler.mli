@@ -924,6 +924,19 @@ module Primes : sig
       [n] itself), provided that [n] is positive. *)
   val number_of_divisors : ?factors:factorization -> int -> int
 
+  (** {{: https://en.wikipedia.org/wiki/Divisor_function} Divisor sum}.
+      [sum_of_divisors ~k n],
+      often noted σ{_[k]}([n]),
+      is the sum of the [k]-th powers of all the divisors of [n]
+      (including 1 and [n] itself),
+      provided that [k] is non-negative and [n] is positive.
+      In particular, for [k] = 0 it gives the number of divisors,
+      and for [k] = 1 it gives the sum of the divisors.
+      The default value of [k] is 1.
+
+      @raise Overflow when the result overflows. *)
+  val sum_of_divisors : ?k:int -> ?factors:factorization -> int -> int
+
   (** [divisors n] is the list of all divisors of [n] (including 1 and [n]
       itself) in ascending order, provided that [n] is positive. *)
   val divisors : ?factors:factorization -> int -> int list
