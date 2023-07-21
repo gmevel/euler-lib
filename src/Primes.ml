@@ -1281,8 +1281,9 @@ let factors ?(tries=default_number_of_tries) ?(max_fact=default_max_fact) n =
 
 (******************************************************************************)
 
-let make_optional_factorization (f : factors:factorization -> int -> 'a) :
-  ?factors:factorization -> int -> 'a =
+let with_factors (f : factorization -> int -> 'a) :
+  ?factors:factorization -> int -> 'a
+=
   fun ?factors:opt_factors n ->
     assert (0 < n) ;
     let factors =
@@ -1291,15 +1292,11 @@ let make_optional_factorization (f : factors:factorization -> int -> 'a) :
       | Some factors -> factors
       end
     in
-    f ~factors n
+    f factors n
 
-let rec eulerphi ~factors n =
-  begin match factors with
-  | []                 -> n
-  | (p, _) :: factors' -> eulerphi ~factors:factors' (n / p * (p-1))
-  end
-
-let eulerphi = make_optional_factorization eulerphi
+let eulerphi =
+  with_factors @@ fun factors n ->
+    List.fold_left (fun m (p, _) -> m / p * (p-1)) n factors
 
 let eulerphi_from_file nmax =
   assert (0 <= nmax && nmax <= 1_000_000) ;
@@ -1314,32 +1311,27 @@ let eulerphi_from_file nmax =
   Scanf.Scanning.close_in file ;
   phi
 
-let rec number_of_divisors ~factors _ =
-  begin match factors with
-  | []                 -> 1
-  | (_, k) :: factors' -> (k+1) * number_of_divisors ~factors:factors' 1
-  end
+let number_of_divisors =
+  with_factors @@ fun factors _ ->
+    List.fold_left (fun m (_, k) -> m * (k+1)) 1 factors
 
-let number_of_divisors = make_optional_factorization number_of_divisors
-
-let divisors ~factors _ =
-  let divisors = ref [] in
-  let rec aux factors d =
-    begin match factors with
-    | [] ->
-        divisors := d :: !divisors
-    | (p, k) :: factors' ->
-        let d = ref d in
-        for _ = 0 to k do
-          aux factors' !d ;
-          d := !d * p ;
-        done
-    end
-  in
-  aux factors 1 ;
-  List.sort (-) !divisors
-
-let divisors = make_optional_factorization divisors
+let divisors =
+  with_factors @@ fun factors _ ->
+    let divisors = ref [] in
+    let rec aux factors d =
+      begin match factors with
+      | [] ->
+          divisors := d :: !divisors
+      | (p, k) :: factors' ->
+          let d = ref d in
+          for _ = 0 to k do
+            aux factors' !d ;
+            d := !d * p ;
+          done
+      end
+    in
+    aux factors 1 ;
+    List.sort (-) !divisors
 
 type incremental_divisor = {
   divisor : int ;
@@ -1352,39 +1344,40 @@ module DivisorHeap =
     let leq = (<=)
   end)
 
-let gen_divisor_pairs ~factors n =
-  let r = Arith.isqrt n in
-  let h = ref @@ DivisorHeap.add DivisorHeap.empty { divisor = 1 ; remaining_factors = factors } in
-  let rec augment_divisor_with_factors d factors =
-    begin match factors with
-    | [] ->
-        ()
-    | (p, k) :: factors' ->
-        let d' = d * p in
-        if d' <= r then begin
-          let remaining_factors =
-            if k = 1 then factors' else (p, k-1) :: factors' in
-          h := DivisorHeap.add !h { divisor = d' ; remaining_factors } ;
-          augment_divisor_with_factors d factors'
-        end
-    end
-  in
-  let rec gen () =
-    begin match DivisorHeap.take !h with
-    | None ->
-        Seq.Nil
-    | Some (h', x) ->
-        h := h' ;
-        if x.divisor = r then begin
-          assert (x.divisor * x.divisor = n) ;
-          Seq.Cons ((x.divisor, x.divisor), Seq.empty)
-        end else begin
-          assert (x.divisor < r) ;
-          augment_divisor_with_factors x.divisor x.remaining_factors ;
-          Seq.Cons ((x.divisor, n / x.divisor), gen)
-        end
-    end
-  in
-  gen
+let gen_divisor_pairs =
+  with_factors @@ fun factors n ->
+    let r = Arith.isqrt n in
+    let h = ref @@ DivisorHeap.add DivisorHeap.empty
+                     { divisor = 1 ; remaining_factors = factors } in
+    let rec augment_divisor_with_factors d factors =
+      begin match factors with
+      | [] ->
+          ()
+      | (p, k) :: factors' ->
+          let d' = d * p in
+          if d' <= r then begin
+            let remaining_factors =
+              if k = 1 then factors' else (p, k-1) :: factors' in
+            h := DivisorHeap.add !h { divisor = d' ; remaining_factors } ;
+            augment_divisor_with_factors d factors'
+          end
+      end
+    in
+    let rec gen () =
+      begin match DivisorHeap.take !h with
+      | None ->
+          Seq.Nil
+      | Some (h', x) ->
+          h := h' ;
+          if x.divisor = r then begin
+            assert (x.divisor * x.divisor = n) ;
+            Seq.Cons ((x.divisor, x.divisor), Seq.empty)
+          end else begin
+            assert (x.divisor < r) ;
+            augment_divisor_with_factors x.divisor x.remaining_factors ;
+            Seq.Cons ((x.divisor, n / x.divisor), gen)
+          end
+      end
+    in
+    gen
 
-let gen_divisor_pairs = make_optional_factorization gen_divisor_pairs
