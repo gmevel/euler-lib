@@ -14,6 +14,7 @@
 - add `Primes.divisor_pairs`
 - add `Primes.jordan`
 - add `Primes.carmichael`
+- add `Primes.mobius`
 - add `Primes.derivative`
 - BREAKING: rename sequence-related functions:
   + `Arith.sum_seq` -> `sum_of_seq`

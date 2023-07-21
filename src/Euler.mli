@@ -981,6 +981,17 @@ module Primes : sig
   *)
   val carmichael : ?factors:factorization -> int -> int
 
+  (** {{: https://en.wikipedia.org/wiki/Möbius_function}
+      Möbius’ function}.
+      [mobius n],
+      often noted μ([n]),
+      is 0 if [n] has a square factor,
+      −1 if [n] has an odd number of prime factors,
+      or +1 if [n] has an even number of prime factors.
+      This function requires that [n] is positive.
+  *)
+  val mobius : ?factors:factorization -> int -> int
+
   (** {{: https://en.wikipedia.org/wiki/Arithmetic_derivative}
       Arithmetic derivative} of an integer.
       [derivative n],

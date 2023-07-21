@@ -1414,6 +1414,10 @@ let carmichael =
     in
     List.fold_left (fun m (p, k) -> Arith.lcm m (phi p k)) 1 factors
 
+let mobius =
+  with_factors @@ fun factors _n ->
+    List.fold_left (fun m (_, k) -> if k > 1 then 0 else ~-m) 1 factors
+
 let _derivative_pos =
   with_factors @@ fun factors n ->
     let open! Arith in
