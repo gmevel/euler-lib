@@ -972,6 +972,15 @@ module Primes : sig
   *)
   val carmichael : ?factors:factorization -> int -> int
 
+  (** The arithmetic derivative of an integer [n], [derivative n], noted D([n]),
+      is such that
+      D(0) = 0,
+      D(−1) = −1,
+      D({i p}) = 1 for all primes {i p},
+      and D({i m×n}) = D({i m})×{i n} + {i m}×D({i n}) for all integers {i m, n}.
+      @raise Overflow when the result overflows. *)
+  val derivative : ?factors:factorization -> int -> int
+
 end (* module Primes *)
 
 (******************************************************************************)

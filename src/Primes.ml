@@ -1413,3 +1413,17 @@ let carmichael =
       (p-1) * Arith.pow p (k-1)
     in
     List.fold_left (fun m (p, k) -> Arith.lcm m (phi p k)) 1 factors
+
+let _derivative_pos =
+  with_factors @@ fun factors n ->
+    let open! Arith in
+    (* to avoid spurious overflows, we divide before multiplying: *)
+    List.fold_left (fun m (p, k) -> m + n / p * k) 0 factors
+
+let derivative ?factors n =
+  if n = 0 then
+    0
+  else if n < 0 then
+    ~- (_derivative_pos ?factors (~-n))
+  else
+    _derivative_pos ?factors n
