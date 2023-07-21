@@ -1294,23 +1294,6 @@ let with_factors (f : factorization -> int -> 'a) :
     in
     f factors n
 
-let eulerphi =
-  with_factors @@ fun factors n ->
-    List.fold_left (fun m (p, _) -> m / p * (p-1)) n factors
-
-let eulerphi_from_file nmax =
-  assert (0 <= nmax && nmax <= 1_000_000) ;
-  let phi = Array.make (nmax+1) 0 in
-  let file = Scanf.Scanning.open_in "data/eulerphi-under-1_000_000.data" in
-  for i' = 1 to nmax do
-    (* "%_1[\r]@\n" is a format trick that matches \n, \r\n and end-of-file. *)
-    Scanf.bscanf file "φ(%u) = %u%_1[\r]@\n" @@fun i phi_i ->
-    assert (i = i') ;
-    phi.(i) <- phi_i
-  done ;
-  Scanf.Scanning.close_in file ;
-  phi
-
 let number_of_divisors =
   with_factors @@ fun factors _ ->
     List.fold_left (fun m (_, k) -> m * (k+1)) 1 factors
@@ -1383,3 +1366,20 @@ let gen_divisor_pairs =
 
 let divisor_pairs ?factors n =
   List.of_seq (gen_divisor_pairs ?factors n)
+
+let eulerphi =
+  with_factors @@ fun factors n ->
+    List.fold_left (fun m (p, _) -> m / p * (p-1)) n factors
+
+let eulerphi_from_file nmax =
+  assert (0 <= nmax && nmax <= 1_000_000) ;
+  let phi = Array.make (nmax+1) 0 in
+  let file = Scanf.Scanning.open_in "data/eulerphi-under-1_000_000.data" in
+  for i' = 1 to nmax do
+    (* "%_1[\r]@\n" is a format trick that matches \n, \r\n and end-of-file. *)
+    Scanf.bscanf file "φ(%u) = %u%_1[\r]@\n" @@fun i phi_i ->
+    assert (i = i') ;
+    phi.(i) <- phi_i
+  done ;
+  Scanf.Scanning.close_in file ;
+  phi

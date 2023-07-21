@@ -920,17 +920,6 @@ module Primes : sig
       factorization themselves, or another inefficient algorithm.
   *)
 
-  (** Euler’s totient function. [eulerphi n], often noted φ([n]), is the number
-      of integers between 1 and [n] which are coprime with [n], provided that
-      [n] is positive. *)
-  val eulerphi : ?factors:factorization -> int -> int
-
-  (** [eulerphi_from_file nmax] loads precomputed values of φ from a file on
-      disk.
-      @return an array [phi] such that [phi.(n)] = φ([n]) for all
-        1 ≤ [n] ≤ [nmax]. *)
-  val eulerphi_from_file : int -> int array
-
   (** [number_of_divisors n] is the number of divisors of [n] (including 1 and
       [n] itself), provided that [n] is positive. *)
   val number_of_divisors : ?factors:factorization -> int -> int
@@ -948,6 +937,17 @@ module Primes : sig
 
   (** Same as {!divisor_pairs} but returns a [Seq.t]. *)
   val gen_divisor_pairs : ?factors:factorization -> int -> (int * int) Seq.t
+
+  (** Euler’s totient function. [eulerphi n], often noted φ([n]), is the number
+      of integers between 1 and [n] which are coprime with [n], provided that
+      [n] is positive. *)
+  val eulerphi : ?factors:factorization -> int -> int
+
+  (** [eulerphi_from_file nmax] loads precomputed values of φ from a file on
+      disk.
+      @return an array [phi] such that [phi.(n)] = φ([n]) for all
+        1 ≤ [n] ≤ [nmax]. *)
+  val eulerphi_from_file : int -> int array
 
 end (* module Primes *)
 
