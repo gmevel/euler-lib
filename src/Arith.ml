@@ -164,8 +164,8 @@ let unsigned_long_add (a : int) (b : int) : long_int =
   else
     { hi = 1 ; lo = s - max_int - 1 }
 
-(* This implementation of [sum_seq] uses linear space in the worst case, but it
- * consumes the input sequence only once.
+(* This implementation of [sum_of_seq] uses linear space in the worst case, but
+ * it consumes the input sequence only once.
  *
  * [add_cons x ys] adds [x] to the list of summands [ys] and then collapses as
  * many consecutive summands as possible without overflowing: *)
@@ -182,7 +182,7 @@ let rec add_cons x ys =
       else
         x :: ys
   end
-let sum_seq_oneshot xs =
+let sum_of_seq_oneshot xs =
   let ys = Seq.fold_left (fun ys x -> add_cons x ys) [ 0 ] xs in
   (* Invariant: all summands in [ys] are of the same sign (because consecutive
    * summands of different signs could be summed without overflow). *)
@@ -193,27 +193,27 @@ let sum_seq_oneshot xs =
        * and cannot be summed, so the result is an overflow. *)
   end
 
-(* This implementation of [sum_seq] is in constant space, but it consumes the
+(* This implementation of [sum_of_seq] is in constant space, but it consumes the
  * input sequence twice. *)
-let rec sum_seq_aux s pos neg =
+let rec sum_of_seq_aux s pos neg =
   if s >= 0 then
     begin match neg () with
     | Seq.Nil            -> Seq.fold_left add s pos
     | Seq.Cons (n, neg') -> assert (n <> nan) ;
-                            sum_seq_aux (s + n) pos neg'
+                            sum_of_seq_aux (s + n) pos neg'
     end
   else
     begin match pos () with
     | Seq.Nil            -> Seq.fold_left add s neg
-    | Seq.Cons (p, pos') -> sum_seq_aux (s + p) pos' neg
+    | Seq.Cons (p, pos') -> sum_of_seq_aux (s + p) pos' neg
     end
-let sum_seq_twoshot xs =
+let sum_of_seq_twoshot xs =
   let (pos, neg) = Seq.partition (fun x -> x >= 0) xs in
-  sum_seq_aux 0 pos neg
+  sum_of_seq_aux 0 pos neg
 
 (* We prefer the constant-space version, because from it we can obtain the
  * behavior of the oneshot version by memoizing the input sequence. *)
-let sum_seq = sum_seq_twoshot
+let sum_of_seq = sum_of_seq_twoshot
 
 (* Here is a similar algorithm for lists, but, by contrast with [Seq.t], it
  * needlessly uses linear space, because it allocates two lists whose cumulated
@@ -239,7 +239,7 @@ let sum xs =
 
 (* Since algorithms on [Seq.t] use less memory, we use them. *)
 let sum xs =
-  sum_seq_twoshot (List.to_seq xs)
+  sum_of_seq_twoshot (List.to_seq xs)
 
 let unsigned_long_mul (a : int) (b : int) : long_int =
   assert (a >= 0) ;
@@ -315,7 +315,7 @@ let mul_pow2 k a =
   else
     raise Overflow
 
-let prod_seq xs =
+let prod_of_seq xs =
   let rec prod_aux p xs =
     begin match xs () with
     | Seq.Nil ->
@@ -339,7 +339,7 @@ let prod_seq xs =
   prod_aux 1 xs
 
 let prod xs =
-  prod_seq (List.to_seq xs)
+  prod_of_seq (List.to_seq xs)
 
 let div_exact a b =
   assert (a <> nan) ;
@@ -1106,7 +1106,7 @@ let rec gcd a b =
 
 (* This is like [Seq.fold_left gcd 0 xs], except that there is a short-circuit
  * for when the result becomes 1. *)
-let gcd_seq xs =
+let gcd_of_seq xs =
   let rec gcd_aux d xs =
     begin match xs () with
     | Seq.Nil           -> d
@@ -1287,7 +1287,7 @@ let gcdext a0 b0 =
     let (d, u, v) = _gcdext_aux a b in
     (d, mul_sign a0 u, mul_sign b0 v)
 
-let gcdext_seq xs =
+let gcdext_of_seq xs =
   (* With a first [fold_left] we read the sequence from left to right,
    * and compute the gcd d_i and associated coefficients (u_i, v_i) like so:
    *
@@ -1365,7 +1365,7 @@ let lcm a b =
 (* This is like [Seq.fold_left lcm 1 xs], except that there is a short-circuit
  * for when the result becomes 0, and that this short-circuit may avoid
  * overflows. *)
-let lcm_seq xs =
+let lcm_of_seq xs =
   let rec lcm_aux m xs =
     begin match xs () with
     | Seq.Nil           -> m

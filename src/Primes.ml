@@ -438,7 +438,7 @@ end (* module Wheel *)
  * including those that are NOT coprime with the pre-culled primes. This is
  * wasteful. Instead of enumerating odd multiples, we may enumerate just those
  * which are coprime with the pre‐culled primes. For that, we can use the wheel
- * again. This is done in [prime_seq], see below.
+ * again. This is done in [gen_primes], see below.
  *)
 let segmented_eratosthenes_sieve =
   let segm_cardinal = Wheel.diameter * Wheel.turns_per_segment in
@@ -662,7 +662,7 @@ fun nmax ~do_prime ->
     end
   done
 
-let primes nmax ~do_prime =
+let iter_primes nmax ~do_prime =
   assert (0 <= nmax) ;
   (* We are about to start a space‐consuming algorithm, so we’d better make room
    * for it. *)
@@ -755,7 +755,7 @@ module MultHeap =
     let leq = (<=)
   end)
 
-let prime_seq nmax =
+let gen_primes nmax =
   (* If we start from a non-empty heap of multiples (which we make sure of by
    * initializing it with [mult_p1], below), then the heap never becomes empty
    * because, each time we pop a multiple, we re-insert a new one, except when

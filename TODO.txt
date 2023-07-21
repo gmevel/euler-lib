@@ -10,12 +10,12 @@
 - add inlining hints, turn Modular.to_int into external identity, etc.
 - Modular.of_int: add a test for the common scenario where no modulo is needed?
   needs benchmarking
-- improve [Primes.primes]:
+- improve [Primes.iter_primes]:
   + usability: take an optional 2nd callback, [do_composite]
-- have a faster [Primes.prime_seq]:
+- have a faster [Primes.gen_primes]:
     (once OCaml supports algebraic effects, this might become possible
-    by turning the iterator [Primes.primes] into a sequence)
-- improve [Primes.factorization_sieve]:
+    by turning the iterator [Primes.iter_primes] into a sequence)
+- improve [Primes.factorizing_sieve]:
   + usability: take more calbacks as arguments
   + store the factorizations implicitly
   + cull composite numbers by ascending prime powers (avoid repeated divisions)

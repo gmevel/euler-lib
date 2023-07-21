@@ -149,9 +149,9 @@ module Arith : sig
       {b Complexity:} time 𝒪({i n}), space 𝒪(1)
       where {i n} is the length of the sequence.
       @raise Overflow when the result overflows. *)
-  val sum_seq : int Seq.t -> int
+  val sum_of_seq : int Seq.t -> int
 
-  (** Same as {!sum_seq} but where the input sequence is a list.
+  (** Same as {!sum_of_seq} but where the input sequence is a list.
       @raise Overflow when the result overflows. *)
   val sum : int list -> int
 
@@ -175,9 +175,9 @@ module Arith : sig
       {b Complexity:} time 𝒪({i n}), space 𝒪(1)
       where {i n} is the length of the sequence.
       @raise Overflow when the result overflows. *)
-  val prod_seq : int Seq.t -> int
+  val prod_of_seq : int Seq.t -> int
 
-  (** Same as {!prod_seq} but where the input sequence is a list.
+  (** Same as {!prod_of_seq} but where the input sequence is a list.
       @raise Overflow when the result overflows. *)
   val prod : int list -> int
 
@@ -369,7 +369,7 @@ module Arith : sig
   (** The positive greatest common divisor of a sequence of numbers.
       {b Complexity:} 𝒪({i n} × log({i m})) integer divisions
       where {i n} is the length of the sequence and {i m} is its maximum element. *)
-  val gcd_seq : int Seq.t -> int
+  val gcd_of_seq : int Seq.t -> int
 
   (** [gcdext a b] is the extended Euclidean algorithm; it returns [(d, u, v)]
       where [d] is the {e positive} greatest common divisor of [a] and [b], and
@@ -393,7 +393,7 @@ module Arith : sig
 
   (** The positive greatest common divisor of a sequence of numbers, with
       Bézout coefficients.
-      [gcdext_seq @@ List.to_seq [ a1 ; … ; an ]] returns a pair
+      [gcdext_of_seq @@ List.to_seq [ a1 ; … ; an ]] returns a pair
       [(d, [ u1 ; … ; un ])] such that [d] is the positive greatest common
       divisor of {i a{_1}, …, a{_n}}, and the {i u{_i}} are coefficients such that
       {i a{_1}×u{_1} + … + a{_n}×u{_n} = d}.
@@ -404,7 +404,7 @@ module Arith : sig
       @raise Overflow when the computation of Bézout’s coefficients provokes
         an overflow, which may happen even if there exists a representable
         vector of coefficients. *)
-  val gcdext_seq : int Seq.t -> int * int list
+  val gcdext_of_seq : int Seq.t -> int * int list
 
   (** [lcm a b] is the lesser common multiple of [a] and [b].
       Its sign is that of [a]×[b].
@@ -416,7 +416,7 @@ module Arith : sig
       {b Complexity:} 𝒪({i n} × log({i m})) integer divisions
       where {i n} is the length of the sequence and {i m} is its maximum element.
       @raise Overflow when the result overflows. *)
-  val lcm_seq : int Seq.t -> int
+  val lcm_of_seq : int Seq.t -> int
 
   (** [valuation ~factor:d n] returns [(k, m)] such that [n] = [d]{^[k]}×[m] and
       [m] is not divisible by [d]. This assumes that [n] is not null and that
@@ -839,17 +839,17 @@ module Primes : sig
   (** The prime numbers less than 10 000, in ascending order. *)
   val primes_under_10_000 : int array
 
-  (** [primes nmax ~do_prime:f] calls [f] on all prime numbers in ascending
+  (** [iter_primes nmax ~do_prime:f] calls [f] on all prime numbers in ascending
       order from 2 to {e slightly more than} [nmax], as soon as they are found.
       This is useful to iterate on prime numbers and stop when some condition is
       met.
       {b Complexity:} time 𝒪([nmax]×log(log([nmax]))),
       space 𝒪(π(√[nmax])) = 𝒪(√[nmax] ∕ log([nmax])).
   *)
-  val primes : int -> do_prime:(int -> unit) -> unit
+  val iter_primes : int -> do_prime:(int -> unit) -> unit
 
   (** The sequence of prime numbers up to a specified bound.
-      This is significantly slower than {!primes}
+      This is significantly slower than {!iter_primes}
       (about 50 times slower for [nmax = 1_000_000_000]),
       but has the advantage that advancing through the sequence
       is controlled by the consumer,
@@ -858,7 +858,7 @@ module Primes : sig
       {b Complexity:} time 𝒪([nmax]×log([nmax])×log(log([nmax]))),
       space 𝒪(√[nmax] ∕ log([nmax])).
   *)
-  val prime_seq : int -> int Seq.t
+  val gen_primes : int -> int Seq.t
 
   (** Extended prime sieve. [factorizing_sieve nmax ~do_factors:f] computes the
       factorization of all numbers up to [nmax] (included). The result is an
