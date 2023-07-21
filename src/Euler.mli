@@ -938,9 +938,12 @@ module Primes : sig
   (** Same as {!divisor_pairs} but returns a [Seq.t]. *)
   val gen_divisor_pairs : ?factors:factorization -> int -> (int * int) Seq.t
 
-  (** Euler’s totient function. [eulerphi n], often noted φ([n]), is the number
-      of integers between 1 and [n] which are coprime with [n], provided that
-      [n] is positive. *)
+  (** {{: https://en.wikipedia.org/wiki/Euler%27s_totient_function}
+      Euler’s totient function}.
+      [eulerphi n],
+      often noted φ([n]),
+      is the number of integers between 1 and [n] which are coprime with [n],
+      provided that [n] is positive. *)
   val eulerphi : ?factors:factorization -> int -> int
 
   (** [eulerphi_from_file nmax] loads precomputed values of φ from a file on
@@ -949,9 +952,12 @@ module Primes : sig
         1 ≤ [n] ≤ [nmax]. *)
   val eulerphi_from_file : int -> int array
 
-  (** Jordan’s totient function. [jordan ~k n], often noted J{_[k]}([n]),
-      is the number of [k]-tuples ({i a{_1}, …, a}{_[k]})
-      such that every {i a{_i}} is between 1 and [n],
+  (** {{: https://en.wikipedia.org/wiki/Jordan%27s_totient_function}
+      Jordan’s totient function}.
+      [jordan ~k n],
+      often noted J{_[k]}([n]),
+      is the number of [k]-tuples ({i a{_1}, …, a}{_[k]}) such that
+      every {i a{_i}} is between 1 and [n],
       and gcd({i a{_1}, …, a}{_[k]}, [n]) = 1
       (in other words, the tuple is setwise-coprime with [n],
       but not necessarily pairwise-coprime).
@@ -961,9 +967,12 @@ module Primes : sig
       @raise Overflow when the result overflows. *)
   val jordan : k:int -> ?factors:factorization -> int -> int
 
-  (** Carmichael’s function. [carmichael n], often noted λ([n]), is the smallest
-      positive exponent {i k} such that, for all {i a} coprime with [n], we have
-      {i a{^k}} ≡ 1 (mod [n]).
+  (** {{: https://en.wikipedia.org/wiki/Carmichael_function}
+      Carmichael’s function}.
+      [carmichael n],
+      often noted λ([n]),
+      is the smallest positive exponent {i k} such that,
+      for all {i a} coprime with [n], we have {i a{^k}} ≡ 1 (mod [n]).
       In other words, it is the exponent of the multiplicative group of integers
       modulo [n], that is, the least common multiple of the orders of all the
       invertible integers modulo [n].
@@ -972,7 +981,10 @@ module Primes : sig
   *)
   val carmichael : ?factors:factorization -> int -> int
 
-  (** The arithmetic derivative of an integer [n], [derivative n], noted D([n]),
+  (** {{: https://en.wikipedia.org/wiki/Arithmetic_derivative}
+      Arithmetic derivative} of an integer.
+      [derivative n],
+      often noted D([n]),
       is such that
       D(0) = 0,
       D(−1) = −1,
