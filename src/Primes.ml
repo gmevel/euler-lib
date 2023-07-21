@@ -1400,3 +1400,16 @@ let jordan ~k =
       in
       (pow (n / prod_p) k * prod_pows)
     end
+
+let carmichael =
+  with_factors @@ fun factors _n ->
+    let factors =
+      begin match factors with
+      | (2, k2) :: factors' when k2 >= 3 -> (2, k2 - 1) :: factors'
+      | _                                -> factors
+      end
+    in
+    let phi p k =
+      (p-1) * Arith.pow p (k-1)
+    in
+    List.fold_left (fun m (p, k) -> Arith.lcm m (phi p k)) 1 factors

@@ -961,6 +961,17 @@ module Primes : sig
       @raise Overflow when the result overflows. *)
   val jordan : k:int -> ?factors:factorization -> int -> int
 
+  (** Carmichael’s function. [carmichael n], often noted λ([n]), is the smallest
+      positive exponent {i k} such that, for all {i a} coprime with [n], we have
+      {i a{^k}} ≡ 1 (mod [n]).
+      In other words, it is the exponent of the multiplicative group of integers
+      modulo [n], that is, the least common multiple of the orders of all the
+      invertible integers modulo [n].
+      It divides Euler’s totient but may be strictly smaller than it.
+      This function requires that [n] is positive.
+  *)
+  val carmichael : ?factors:factorization -> int -> int
+
 end (* module Primes *)
 
 (******************************************************************************)

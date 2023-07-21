@@ -13,6 +13,7 @@
 - fix `Arith.range_down` not being exposed in the interface
 - add `Primes.divisor_pairs`
 - add `Primes.jordan`
+- add `Primes.carmichael`
 - BREAKING: rename sequence-related functions:
   + `Arith.sum_seq` -> `sum_of_seq`
   + `Arith.prod_seq` -> `prod_of_seq`
