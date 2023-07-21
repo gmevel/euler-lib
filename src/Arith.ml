@@ -1124,8 +1124,8 @@ let _overflowing_gcdext a0 b0 =
   (*! assert (a <> nan) ; !*)
   (*! assert (b <> nan) ; !*)
   let rec gcdext a b u v x y =
-    assert (a = u*a0 + v*b0) ;
-    assert (b = x*a0 + y*b0) ;
+    (*! assert (a = u*a0 + v*b0) ; !*)
+    (*! assert (b = x*a0 + y*b0) ; !*)
     if b = 0 then begin
       if a > 0 then
         (a, u, v)
@@ -1217,10 +1217,12 @@ let _gcdext_aux a b =
   (* This is an internal function with the following assumption: *)
   (*! assert (0 < b && b < a) ; !*)
   let (a', b', d, u1, v1) =
-    begin try
-      (* First, try the faster procedure, which may overflow
-       * ([_overflowing_gcdext] works for arbitrary [a] and [b], but the
-       * subsequent minimization assumes [0 < b < a]). *)
+    (* We may start by trying the simpler but possibly-overflowing procedure;
+     * however, because of overflow checks, it is unlikely to be faster than the
+     * general procedure. Thus this part has been commented. *)
+    begin (* try
+      (* [_overflowing_gcdext] works for arbitrary [a] and [b], but the
+       * subsequent minimization assumes [0 < b < a]. *)
       let (d, u0, v0) = _overflowing_gcdext a b in
       let a' = a / d in
       let b' = b / d in
@@ -1231,8 +1233,8 @@ let _gcdext_aux a b =
       let u1 = u0 + q * b' in
       (a', b', d, u1, v1)
     with Overflow ->
-      (* In case of overflow, we fallback to the heavier procedure with modular
-       * arithmetic. *)
+    *)
+      (* The general procedure, with modular arithmetic. *)
       let (d, v0) = _modular_gcdext ~modulo:a b in
       let a' = a / d in
       let b' = b / d in
