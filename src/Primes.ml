@@ -1281,18 +1281,19 @@ let factors ?(tries=default_number_of_tries) ?(max_fact=default_max_fact) n =
 
 (******************************************************************************)
 
+let get_factors : ?factors:factorization -> int -> 'a =
+  fun ?factors:opt_factors n ->
+    assert (0 < n) ;
+    begin match opt_factors with
+    | None         -> factors n
+    | Some factors -> factors
+    end
+
 let with_factors (f : factorization -> int -> 'a) :
   ?factors:factorization -> int -> 'a
 =
-  fun ?factors:opt_factors n ->
-    assert (0 < n) ;
-    let factors =
-      begin match opt_factors with
-      | None         -> factors n
-      | Some factors -> factors
-      end
-    in
-    f factors n
+  fun ?factors n ->
+    f (get_factors ?factors n) n
 
 let number_of_divisors =
   with_factors @@ fun factors _ ->
@@ -1451,3 +1452,71 @@ let derivative ?factors n =
     ~- (_derivative_pos ?factors (~-n))
   else
     _derivative_pos ?factors n
+
+let order_with_known_multiple ?factors_phi ~phi ~modulo:m a =
+  assert (m <> 0) ;
+  let m = abs m in
+  let a = Arith.erem a m in
+  if Arith.gcd a m <> 1 then
+    raise Division_by_zero ;
+  (* We know that the order modulo m divides φ(m), hence its prime factors are
+   * included in those of φ(m) and their valuations in ord_p are bounded by
+   * those in φ(m); so, GIVEN THE FACTORIZATION OF φ(m), we get the potential
+   * prime factors of ord_p, and we determine their valuations independently
+   * from one another. *)
+  get_factors ?factors:factors_phi phi
+  |> List.map begin fun (q, l) ->
+    (* q is a prime factor of φ(m) with valuation l;
+     * then, q may be a prime factor of ord_p with some valuation i ≤ l;
+     * we just use a loop to find the smallest i such that *)
+    let b = ref @@ Modular.pow ~modulo:m a (phi / Arith.pow q l) in
+    let i = ref 0 in
+    while !b <> 1 do
+      b := Modular.pow ~modulo:m !b q ;
+      i := !i + 1 ;
+    done ;
+    assert (!i <= l) ;
+    Arith.pow q !i
+  end
+  |> List.fold_left ( * ) 1
+
+let order_mod_prime_pow ?factors_pred_prime ~modulo:(p, k) a =
+  (*! assert (is_prime p) ; !*)
+  assert (k > 0) ;
+  if Arith.gcd a p <> 1 then
+    raise Division_by_zero ;
+  begin
+    (* we start by computing the order modulo p
+     * (or modulo 4, if p = 2 and k ≥ 2): *)
+    let ord_p =
+      if p = 2 then
+        if k = 1 then 1
+        else (if a land 0b11 = 1 then 1 else 2) (* this is the order modulo 4 *)
+      else
+        order_with_known_multiple ?factors_phi:factors_pred_prime ~phi:(p-1) ~modulo:p a
+    in
+    (* from it, we can deduce the order modulo p^k: *)
+    let b = Modular.pow ~modulo:(Arith.pow p k) a ord_p in
+    if b = 1 then
+      ord_p
+    else
+      let (v, _) = Arith.valuation ~factor:p (b-1) in
+      ord_p * Arith.pow p (max 0 (k-v))
+  end
+
+let order ?factors_pred_primes ?factors_mod ~modulo:m a =
+  assert (m <> 0) ;
+  let m = abs m in
+  if Arith.gcd a m <> 1 then
+    raise Division_by_zero ;
+  (* GIVEN THE FACTORIZATION OF m, we compute the orders modulo each of the
+   * prime power factors of m, then we combine them by computing their LCM.
+   * This works thanks to the Chinese remainder theorem. *)
+  let factors_mod = get_factors ?factors:factors_mod m in
+  begin match factors_pred_primes with
+  | Some facs -> List.map2 (fun fac pk -> (Some fac, pk)) facs factors_mod
+  | None      -> List.map (fun pk -> (None, pk)) factors_mod
+  end
+  |> List.map (fun (fac, pk) -> order_mod_prime_pow ?factors_pred_prime:fac ~modulo:pk a)
+  |> List.to_seq
+  |> Arith.lcm_of_seq

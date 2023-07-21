@@ -601,7 +601,7 @@ module Modular : sig
       This module defines modular arithmetic operations, that is, operations on
       elements of the ring ℤ∕{i m}ℤ where {i m} is a positive integer, called the
       modulus. All operations take {i m} as a named parameter [~modulo]. Elements of
-      ℤ∕{i m}ℤ are represented by their canonical representatives between 0 and m−1
+      ℤ∕{i m}ℤ are represented by their canonical representatives between 0 and {i m}−1
       (included), of type [int]. All functions may assume that the modulus is
       positive and that canonical representatives are used, and may raise
       [Assert_failure] if that is not the case.
@@ -609,6 +609,11 @@ module Modular : sig
       The modulus can also be set globally, and not repeated for each individual
       operation, by giving it as a parameter to the functor {!Make}. This
       provides unary and binary operators.
+
+      A related function, {!Primes.order},
+      which computes the multiplicative order modulo {i m},
+      is found in module [Primes],
+      because it depends on computing integer factorizations.
   *)
 
   (****************************************************************************)
@@ -1016,6 +1021,54 @@ module Primes : sig
       and D({i m×n}) = D({i m})×{i n} + {i m}×D({i n}) for all integers {i m, n}.
       @raise Overflow when the result overflows. *)
   val derivative : ?factors:factorization -> int -> int
+
+  (** [order ~modulo:m a],
+      where [m] ≠ 0,
+      is the multiplicative order of [a] modulo [m],
+      This is the smallest positive exponent {i n} such that
+      [a]{^{i n}} ≡ 1 (mod [m]).
+
+      If given, [factors_mod] must be the factorization of [m].
+
+      If given, [factors_pred_primes] must be the factorizations
+      of all the [p]−1 where [p] are the prime factors of [m],
+      sorted by [p].
+
+      @raise Division_by_zero when [a] is not invertible modulo [m].
+  *)
+  val order :
+    ?factors_pred_primes:factorization list -> ?factors_mod:factorization ->
+    modulo:int -> int -> int
+
+  (** [order_with_known_multiple ~phi ~modulo:m a]
+      is the same as {!order}[ ~modulo:m a],
+      but exploits the fact that the order is a divisor of [phi].
+      Values suitable for [phi] always include
+      λ([m]) ({!carmichael}[ m])
+      and φ([m]) ({!eulerphi}[ m]);
+      in some situations, a smaller value may be known.
+
+      If given, [factors_phi] must be the factorization of [phi].
+
+      @raise Division_by_zero when [a] is not invertible modulo [m].
+  *)
+  val order_with_known_multiple :
+    ?factors_phi:factorization -> phi:int ->
+    modulo:int -> int -> int
+
+  (** [order_mod_prime_pow ~modulo:(p, k) a],
+      where [p] is a prime and [k] > 0,
+      is the multiplicative order
+      of [a] modulo [p]{^[k]},
+      It is assumed that [p]{^[k]} does not overflow.
+
+      If given, [factors_pred_prime] must be the factorization of [p]−1.
+
+      @raise Division_by_zero when [a] is not invertible modulo [m].
+  *)
+  val order_mod_prime_pow :
+    ?factors_pred_prime:factorization ->
+    modulo:(int * int) -> int -> int
 
 end (* module Primes *)
 

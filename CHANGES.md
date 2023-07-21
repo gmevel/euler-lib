@@ -22,6 +22,7 @@
   + `Primes.carmichael`
   + `Primes.mobius`
   + `Primes.derivative`
+- add `Primes.order`, `Primes.order_with_known_multiple`, `Primes.order_mod_prime_pow`
 - BREAKING: rename sequence-related functions:
   + `Arith.sum_seq` -> `sum_of_seq`
   + `Arith.prod_seq` -> `prod_of_seq`

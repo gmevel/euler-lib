@@ -10,6 +10,9 @@
 - add inlining hints, turn Modular.to_int into external identity, etc.
 - Modular.of_int: add a test for the common scenario where no modulo is needed?
   needs benchmarking
+- improve interface for computing multiplicative orders modulo [m]:
+  having to pass factorizations explicitly is annoying;
+  use a cache for already-copmuted factorizations?
 - improve [Primes.iter_primes]:
   + usability: take an optional 2nd callback, [do_composite]
 - have a faster [Primes.gen_primes]:
