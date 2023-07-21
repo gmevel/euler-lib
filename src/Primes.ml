@@ -1381,3 +1381,5 @@ let gen_divisor_pairs =
     in
     gen
 
+let divisor_pairs ?factors n =
+  List.of_seq (gen_divisor_pairs ?factors n)

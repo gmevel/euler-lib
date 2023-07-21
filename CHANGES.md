@@ -9,6 +9,7 @@
 - add functions related to integer powers and roots: `Arith.is_pow`,
   `Arith.is_pow2`, `Arith.kth_root`, `Arith.is_kth_pow`, `Arith.smallest_root`
 - fix `Arith.range_down` not being exposed in the interface
+- add `Primes.divisor_pairs`
 
 # 0.2
 

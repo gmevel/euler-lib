@@ -939,11 +939,14 @@ module Primes : sig
       itself) in ascending order, provided that [n] is positive. *)
   val divisors : ?factors:factorization -> int -> int list
 
-  (** [gen_divisor_pairs n] returns all pairs ({i d}, [n]/{i d})
+  (** [divisor_pairs n] is the list of all pairs ({i d}, [n]/{i d})
       where d divides [n] and 1 ≤ {i d} ≤ √[n],
       provided that [n] is positive.
       Pairs are presented in ascending order of {i d}.
       When [n] is a perfect square, the pair (√[n], √[n]) is presented once. *)
+  val divisor_pairs : ?factors:factorization -> int -> (int * int) list
+
+  (** Same as {!divisor_pairs} but returns a [Seq.t]. *)
   val gen_divisor_pairs : ?factors:factorization -> int -> (int * int) Seq.t
 
 end (* module Primes *)
