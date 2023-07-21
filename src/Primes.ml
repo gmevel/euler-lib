@@ -1383,3 +1383,20 @@ let eulerphi_from_file nmax =
   done ;
   Scanf.Scanning.close_in file ;
   phi
+
+let jordan ~k =
+  assert (k > 0) ;
+  with_factors @@ fun factors n ->
+    (* because of the [pred] in the calculation below, there is a single case
+     * where we would throw a spurious Overflow: if n = 2 and k = uint_size. *)
+    if n = 2 then
+      (1 lsl k) - 1
+    else begin
+      let open! Arith in
+      let open Arith.Unsafe in
+      let (prod_p, prod_pows) =
+        List.fold_left (fun (pp, pows) (p, _) -> (pp *! p, pows * pred (pow p k)))
+          (1, 1) factors
+      in
+      (pow (n / prod_p) k * prod_pows)
+    end

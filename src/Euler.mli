@@ -949,6 +949,18 @@ module Primes : sig
         1 ≤ [n] ≤ [nmax]. *)
   val eulerphi_from_file : int -> int array
 
+  (** Jordan’s totient function. [jordan ~k n], often noted J{_[k]}([n]),
+      is the number of [k]-tuples ({i a{_1}, …, a}{_[k]})
+      such that every {i a{_i}} is between 1 and [n],
+      and gcd({i a{_1}, …, a}{_[k]}, [n]) = 1
+      (in other words, the tuple is setwise-coprime with [n],
+      but not necessarily pairwise-coprime).
+      This is a generalization of Euler’s totient, which is obtained with [k] = 1.
+      It requires that [k] and [n] are positive.
+
+      @raise Overflow when the result overflows. *)
+  val jordan : k:int -> ?factors:factorization -> int -> int
+
 end (* module Primes *)
 
 (******************************************************************************)
