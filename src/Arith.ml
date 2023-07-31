@@ -39,7 +39,7 @@ let sign a =
  * naive implementation. *)
 (*
 let sign a =
-  (a asr Sys.int_size) lor ((a lor (-a)) lsr (Sys.int_size - 1))
+  (a asr (Sys.int_size - 1)) lor ((-a) lsr (Sys.int_size - 1))
 *)
 (* Using the standard comparison function, specialized to type `int`, is even
  * faster. Although the doc does not guarantee that `compare` always return
