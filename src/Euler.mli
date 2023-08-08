@@ -281,6 +281,8 @@ module Arith : sig
       provided that [base] is at least 2 and that [n] is non‐negative.
       In other words, it returns ⌊ln([n])∕ln([base])⌋,
       This is the unique integer [k] such that [base]{^[k]} ≤ [n] < [base]{^[k]+1}.
+      This is a relatively slow operation in general,
+      but it is specially optimized for bases 2, 16, 64, 10 and 60.
       The default base is 10.
       {b Complexity:} 𝒪(log(log([n]))) integer multiplications.
       @return −1 when [n] = 0. *)
@@ -295,6 +297,8 @@ module Arith : sig
       It is equal to ⌈ln([n]+1)∕ln([base])⌉
       and also (when [n] is not null) to ⌊ln([n])∕ln([base])⌋ + 1.
       This is the unique integer [k] such that [base]{^[k]−1} ≤ [n] < [base]{^[k]}.
+      As for {!log}, this is relatively slow
+      but it is fast for bases 2, 16, 64, 10 and 60.
       The default base is 10.
       {b Complexity:} 𝒪(log(log([n]))) integer multiplications.
       @return 0 when [n] = 0. *)

@@ -258,38 +258,62 @@ let mul a0 b0 =
   assert (b0 <> nan) ;
   let a = abs a0 in
   let b = abs b0 in
-  if a <= lower_half then begin
-    if b <= lower_half then
-      a0 * b0
-    else begin
-      let (bh, bl) = (b lsr uint_half_size, b land lower_half) in
-      let a_bl = a*bl in
-      let (h, l) = (a_bl lsr uint_half_size, a_bl land lower_half) in
-      (* This expression does not overflow (each variable is at most equal to
-       * lower_half = 2^{N∕2}−1 where N = uint_size, so that the total is
-       * at most equal to lower_half² + lower_half, which is less than 2^N): *)
-      let h' = a*bh + h in
-      if h' <= lower_half then
-        mul_sign (a0 lxor b0) ((h' lsl uint_half_size) lor l)
-      else
-        raise Overflow
-    end
-  end
-  else begin
-    if b <= lower_half then begin
-      let (ah, al) = (a lsr uint_half_size, a land lower_half) in
-      let al_b = al*b in
-      let (h, l) = (al_b lsr uint_half_size, al_b land lower_half) in
-      (* This expression does not overflow (same proof): *)
-      let h' = ah*b + h in
-      if h' <= lower_half then
-        mul_sign (a0 lxor b0) ((h' lsl uint_half_size) lor l)
-      else
-        raise Overflow
-    end
+  (* fast-path for small integers: *)
+  if (a lor b) <= lower_half then
+    a0 * b0
+  else if a <= lower_half || b <= lower_half then begin
+    (* NOTE: There does not seem to be any speed benefit in sparing some
+     * operations by distinguishing the two cases. Perhaps any benefit is
+     * countered by the increase in code size and the additional branching. *)
+    let (ah, al) = (a lsr uint_half_size, a land lower_half) in
+    let (bh, bl) = (b lsr uint_half_size, b land lower_half) in
+    let al_bl = al*bl in
+    let (h, l) = (al_bl lsr uint_half_size, al_bl land lower_half) in
+    (* This expression does not overflow (at most one of ah×bl and al×bh is
+     * non‐null; and each variable is at most equal to lower_half = 2^{N∕2}−1
+     * where N = uint_size, so that the total is at most equal to
+     * lower_half² + lower_half, which is less than 2^N): *)
+    let h' = al*bh + ah*bl + h in
+    if h' <= lower_half then
+      mul_sign (a0 lxor b0) ((h' lsl uint_half_size) lor l)
     else
       raise Overflow
   end
+  else
+    raise Overflow
+
+(* The following implementation of overflowing multiplication (adapted from
+ * Hacker’s Delight, 2nd ed, Fig 2-2) is appealing but, outside of the fast
+ * path, it calls [log2sup]; even with our fastest branchfree version of
+ * [log2sup], it is about twice slower than the implementation above. *)
+(*
+let mul a0 b0 =
+  assert (a0 <> nan) ;
+  assert (b0 <> nan) ;
+  let a = abs a0 in
+  let b = abs b0 in
+  (* fast-path for small integers: *)
+  if (a lor b) <= lower_half then
+    a0 * b0
+  else begin
+    let m = a0 * b0 in
+    (* There are 3 cases:
+     *   - if [log2 a + log2 b ≤ uint_size - 2], then [a * b] cannot overflow;
+     *   - if [log2 a + log2 b = uint_size - 1], then [a * b] may overflow but
+     *     the mathematical result is less than 2^(uint_size+1), so we can
+     *     detect an overflow by checking the sign of the machine result;
+     *   - if [log2 a + log2 b ≥ uint_size], then [a * b] always overflows.
+     *)
+    let k = (log2sup_branchless[@inlined]) a in
+    let l = (log2sup_branchless[@inlined]) b in
+    if k + l <= uint_size + 1 && (m lxor a0 lxor b0 >= 0 || m = 0) then
+      (* ^ the last condition "|| m = 0" handles the case when a0 = 0 || b0 = 0;
+       * this case would fail the sign test that precedes. *)
+      m
+    else
+      raise Overflow
+  end
+*)
 
 (* We don’t override the standard unsafe operators right now because we still
  * want to use them in this file, but in some parts we’ll need the safe
@@ -446,119 +470,206 @@ let[@inline] powm1 k =
   (*! assert (k <> nan) ; !*)
   1 - ((k land 1) lsl 1)
 
-(* This implementation is only valid for systems where native unsigned integers
- * are at most 53 bits (including 32‐bit OCaml). See comments below. *)
-let log2sup_53bit n =
-  assert (0 <= n) ;
-  snd@@frexp (float n)
-
-(* This implementation is only valid for systems where native unsigned integers
- * are at least 53 bits and at most 62 bits (including 64‐bit OCaml). *)
-let log2sup_62bit n =
-  assert (0 <= n) ;
-  (* As long as the integer can be represented exactly as a floating‐point
-   * number (53 bits being the precision of floating‐point numbers), the fastest
-   * solution is by far to convert the integer to a floating‐point number and to
-   * read its exponent. It gives wrong results for larger numbers, because those
-   * may be rounded up (for example it gives 62 instead of 61, for all numbers
-   * between 2^61−128 and 2^61−1). *)
-  if n <= (1 lsl 53) - 1 then
-    snd@@frexp (float n)
-  (* If we know that the number is at least 2^53, we can discard the 54 lowest
-   * bits, compute the result for the remaining bits, and add 54. Here we could
-   * use the floating‐point trick again, but since there are only 8 bits
-   * remaining, it is faster to compute the exponent ourselves. *)
-  else begin
-    let n = n lsr 54 in
-    (* Using a linear search to find the highest bit set. *)
+(* Here is how to compute [log2sup] using floating-point operations.
+ * Don’t use it, it is much slower (about 5 times slower) than our best solution
+ * based on integer operations. *)
 (*
-         if n >= 128 then 62
-    else if n >=  64 then 61
-    else if n >=  32 then 60
-    else if n >=  16 then 59
-    else if n >=   8 then 58
-    else if n >=   4 then 57
-    else if n >=   2 then 56
-    else                  54 lor n
-  end
-*)
-    (* Benchmarking suggests that, for random integers, a dichotomy is faster
-     * than a linear search for finding the highest bit set. This looks odd, but
-     * may be explained by a better branch prediction behavior. The code below
-     * is twice as fast as the code above. *)
-(*
-    if n >= 16 then begin
-      if n >= 64 then begin
-        (*! if n >= 128 then 62 else 61 !*)
-        61 + (n lsr 7)
-      end else begin
-        (*! if n >= 32 then 60 else 59 !*)
-        59 + (n lsr 5)
-      end
-    end else begin
-      if n >= 4 then begin
-        (*! if n >= 8 then 58 else 57 !*)
-        57 + (n lsr 3)
-      end else begin
-        (*! if n >= 2 then 56 else 54 lor n !*)
-        54 + min 2 n
-      end
-    end
-*)
-    (* Better yet, we can simply use precomputed values (stored in a string to
-     * save space). This code is 16 times faster than the linear search. *)
-    let log2sup_8bit = "67889999::::::::;;;;;;;;;;;;;;;;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<================================================================>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" in
-    Char.code @@ String.unsafe_get log2sup_8bit n
-  end
-
 let log2sup =
+  (* As long as the integer can be represented exactly as a floating‐point
+   * number (53 bits being the precision of floating‐point numbers), we can
+   * convert to [float] and read its exponent. It gives wrong results for larger
+   * numbers, because those may be rounded up (for example it gives 62 instead
+   * of 61, for all numbers between 2^61−128 and 2^61−1). *)
   if uint_size <= 53 then
-    log2sup_53bit
+    fun n ->
+      assert (0 <= n) ;
+      snd@@frexp (float n)
   else if uint_size <= 62 then
-    log2sup_62bit
+    fun n ->
+      assert (0 <= n) ;
+      if n <= (1 lsl 53) - 1 then
+        snd@@frexp (float n)
+      else
+        54 + snd@@frexp (float (n lsr 54))
   else
     assert false
+*)
+
+(* This is the fastest implementation of [log2sup], according to benchmarks.
+ * (see Hacker’s Delight, 2nd ed, Figure 5-12 and the text below) *)
+let log2sup =
+  (* We use precomputed values for the log2sup of 8-bit numbers: *)
+  let log2sup_8bit =
+    "\000\001\002\002\003\003\003\003\004\004\004\004\004\004\004\004\005\005\005\005\005\005\005\005\005\005\005\005\005\005\005\005\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b"
+  in
+fun n ->
+  assert (0 <= n) ;
+  let k = ref 0 in
+  let n = ref n in
+  (* 31 instead of 32, because our integers have 31 or 63 bits: *)
+  let hi = !n lsr 31 in if hi <> 0 then (k := !k + 31 ; n := hi) ;
+  let hi = !n lsr 16 in if hi <> 0 then (k := !k + 16 ; n := hi) ;
+  let hi = !n lsr  8 in if hi <> 0 then (k := !k +  8 ; n := hi) ;
+  !k + Char.code (String.unsafe_get log2sup_8bit !n)
+
+(* The following branchless implementation is almost as fast as the one above
+ * when benchmarked in isolation (1.2 times slower), and it seems to fare better
+ * with inlining (perhaps because it benefits from instruction parallelism?).
+ * Besides, its precomputed table is also useful for [valuation_of_2]. *)
+let rec log2sup n =
+  assert (0 <= n) ;            (* n = 0b ???????10000 *)
+  (* we leak the highest set bit to lower bits: *)
+  let n = n lor (n lsr 1) in
+  let n = n lor (n lsr 2) in
+  let n = n lor (n lsr 4) in
+  let n = n lor (n lsr 8) in
+  let n = n lor (n lsr 16) in
+  let n = n lor (n lsr 32) in  (* n = 0b 000000011111 *)
+  let n = n + 1 in             (* n = 0b 000000100000 *)
+  Char.code (String.unsafe_get magic_table_log2_of_pow2 (magic_hash n))
+
+(* For 64-bit OCaml: This function returns a 6-bit number, ie. between 0 and 63.
+ * It associates a distinct hash:
+ *   - to every 63-bit number of the form 2^i where 0 ≤ i ≤ 63;
+ *   - to every 63-bit number of the form 2^i − 1 where 0 ≤ i ≤ 63,
+ *     with one exception: 2^0 − 1 (= 0) collides with 2^58 − 1.
+ * Note that the same magic constant would also work for 64-bit numbers:
+ * the shift must be changed from 57 to 58, and the tables adjusted;
+ * then we also get distinct hashes for the 2^i, and for the 2^i − 1,
+ * where 0 ≤ i ≤ 63, excepted 2^0 − 1 (= 0) colliding with 2^1 − 1 (= 1).
+ *
+ * For 32-bit OCaml: same but
+ *   - integers have 31 bits
+ *   - the hash is a 5-bit number between 0 and 31
+ *   - 0 ≤ i ≤ 31
+ *   - the 31-bit collision is 2^0 − 1 vs 2^22 − 1
+ *   - for 32-bit integers, adjust the shift from 26 to 27
+ *   - the 32-bit collision is 2^0 − 1 vs 2^1 − 1.
+ *
+ * Explanation (for 64-bit OCaml):
+ *
+ * This works because in the binary string "magic00000", where "magic" is the
+ * binary writing of the magic constant and "00000" are five 0s, all six-bit
+ * sequences are distinct. Then, computing the magic hash of 2^i just returns
+ * the i-th sequence of six bits in this string (recall that to multiply by 2^i
+ * is to shift left by i bits).
+ *
+ * Why this also works for numbers of the form 2^i − 1 is a bit more mysterious.
+ * Essentially, this is because bits 58--63 are 0s and bits 52--57 are 1s. Then,
+ * computing the magic hash of 2^i − 1 returns the highest six bits of
+ *     (magic lsl i) − magic
+ * and, because the next six bits are 111111, the subtraction always propagate
+ * a carry to the highest six bits… except when the left operand of the
+ * subtraction also has 111111 in bits 52--57, which happens for i = 0.
+ * Therefore, when i ≠ 0, the magic hash of 2^i − 1 is one less than the magic
+ * hash of 2^i.
+ *
+ * http://graphics.stanford.edu/~seander/bithacks.html#IntegerLogDeBruijn
+ * https://stackoverflow.com/questions/11376288/fast-computing-of-log2-for-64-bit-integers
+ * https://en.wikipedia.org/wiki/De_Bruijn_sequence
+ *)
+and magic_hash =
+  if Sys.int_size = 31 then
+    fun[@inline] n -> (n * 0x07DCD629) lsr 26
+  else if Sys.int_size = 63 then
+    fun[@inline] n -> (n * 0x03F6EAF2CD271461) lsr 57
+  else
+    assert false
+
+(* Precomputed hash table for the log2sup of powers of two.
+ * It is such that if [h] is the magic_hash of 2^i where 0 ≤ i ≤ 63,
+ * then the value of the table at index [h] is [i].
+ *)
+and magic_table_log2_of_pow2 =
+  if Sys.int_size = 31 then
+    "\031\000\022\001\028\023\013\002\029\026\024\017\019\014\009\003\030\021\027\012\025\016\018\008\020\011\015\007\010\006\005\004"
+  else if Sys.int_size = 63 then
+    "\063\000\058\001\059\047\053\002\060\039\048\027\054\033\042\003\061\051\037\040\049\018\028\020\055\030\034\011\043\014\022\004\062\057\046\052\038\026\032\041\050\036\017\019\029\010\013\021\056\045\025\031\035\016\009\012\044\024\015\008\023\007\006\005"
+  else
+    assert false
+
+(* This table contains 0, followed by all powers of 10 that do not overflow: *)
+let table_prev_pow10 =
+  Array.init (Sys.int_size * 3 / 10 + 2)
+    (fun i -> if i = 0 then 0 else pow 10 (i-1))
+
+(* Ditto for 60: *)
+let table_prev_pow60 =
+  Array.init (Sys.int_size / 6 + 2)
+    (fun i -> if i = 0 then 0 else pow 60 (i-1))
 
 (* By picking a good initial estimation for the logarithm, our implementation is
  * likely much faster than the naive implementation (not checked thoroughly). *)
 let logsup ?(base=10) n =
-  assert (2 <= base) ;
-  assert (0 <= n) ;
-  if n <> 0 then begin
-    (* Below is an excellent estimation, which also gives 0 for n=0, but:
-    *  (1) I’m not sure whether the estimation is always below the result;
-    *  (2) as we use float operations, it needs benchmarking. *)
-    (*! let l_est = truncate (log (float (n+1)) /. log (float base)) in !*)
-    (* Below is a more conservative under-estimation, proven correct; I could
-     * also prove the associated over-estimation, shown below in a comment, and:
-     *     l_overest ≤ 2 × l_underest        for any base
-     *     l_overest ≤ 3/2 × l_underest + 1  for base ≥ 4
-     *     l_overest ≤ 4/3 × l_underest + 1  for base ≥ 8
-     *     l_overest ≤ 5/4 × l_underest + 1  for base ≥ 16
-     *     …
-     * which is not satisfying because a priori we might still do O(l_underest)
-     * iterations from the initial estimation; however quick tests with base=3
-     * seem to suggest that in practice, we iter much less than that(?). *)
-    let l_underest = (log2sup n - 1) / log2sup (base-1) + 1 in
-    (*! let l_overest = log2sup (n-1) / (log2sup base - 1) + 1 in !*)
-    begin match pow base l_underest with
-    | p ->
-        (* Divisions are costly, we rather do repeated multiplications than
-         * repeated divisions; we still need one division for overflow control,
-         * though: *)
-        let stop = min n (max_int / base) in
-        let p = ref p in
-        let l = ref l_underest in
-        (* invariant: p = base^l *)
-        while !p <= stop do
-          p := !p * base ; (* we carefully avoid overflowing here *)
-          incr l ;
-        done ;
-        if !p > n then !l else !l + 1
-    | exception Overflow -> l_underest
-    end
+  begin match base with
+  |  2 -> log2sup n
+  | 16 -> (log2sup n + 3) (* / 4 *) lsr 2
+  | 64 -> (log2sup n + 5) / 6
+  | 10 ->
+      (* See Hacker’s Delight (2nd ed, Chapter 11, text below Figure 11-11)
+       * for an explanation of the method. Here, since we are not computing
+       * floor(log10(x)) but rather log10sup = ceil(log10(x+1)), we use an
+       * over-approximation rather than an under-approximation:
+       *     log10 (2) = 39/128 − ε  where ε > 0
+       * so that:
+       *     log10sup(x) = ceil(39/128 × log2sup(x)) − ε'  where ε' > 0.
+       * The constant 39/128 is accurate enough that, for any x < 2^64,
+       * the error commited ε' is at most 1. Then, we test whether an error
+       * has been commited by using just a table lookup.
+       *
+       * General formula: to commit an error of at most 1 for all x < 2^N when
+       * computing the logarithm in base B, the chosen constant c must satisfy:
+       *     log_B(2) ≤ c < (1 + N×log_B(2)) / (1 + N)
+       *)
+      let l = (39 * log2sup n + 127) (* / 128 *) lsr 7 in
+      (*! if n >= table_prev_pow10.(l) then l else l - 1 !*)
+      l + ((n - Array.unsafe_get table_prev_pow10 l) asr Sys.int_size)
+      (* ^ this hack avoids branching: [(x - y) asr Sys.int_size]
+       * returns 0 if [x - y >= 0] and -1 if [x - y < 0]. *)
+  | 60 ->
+      (* Same idea. *)
+      let l = (11 * log2sup n + 63) (* / 64 *) lsr 6 in
+      l + ((n - Array.unsafe_get table_prev_pow60 l) asr Sys.int_size)
+  | _ ->
+      assert (2 <= base) ;
+      assert (0 <= n) ;
+      if n <> 0 then begin
+        (* Below is an excellent estimation, which also gives 0 for n=0, but:
+         * (1) I’m not sure whether the estimation is always below the result;
+         * (2) as we use float operations, it needs benchmarking. *)
+        (*! let l_est = truncate (log (float (n+1)) /. log (float base)) in !*)
+        (* Below is a more conservative under-estimation, proven correct;
+         * I could also prove the associated over-estimation, (displayed below
+         * in a comment), and:
+         *     l_overest ≤ 2 × l_underest        for any base
+         *     l_overest ≤ 3/2 × l_underest + 1  for base ≥ 4
+         *     l_overest ≤ 4/3 × l_underest + 1  for base ≥ 8
+         *     l_overest ≤ 5/4 × l_underest + 1  for base ≥ 16
+         *     …
+         * which is not satisfying because a priori we might do O(l_underest)
+         * iterations from the initial estimation; however quick tests with
+         * base=3 suggest that in practice, we iter much less than that(?). *)
+        let l_underest = (log2sup n - 1) / log2sup (base-1) + 1 in
+        (*! let l_overest = log2sup (n-1) / (log2sup base - 1) + 1 in !*)
+        begin match pow base l_underest with
+        | p ->
+            (* Divisions are costly, we rather do repeated multiplications than
+             * repeated divisions; we need one division for overflow control,
+             * though: *)
+            let stop = min n (max_int / base) in
+            let p = ref p in
+            let l = ref l_underest in
+            (* invariant: p = base^l *)
+            while !p <= stop do
+              p := !p * base ; (* we carefully avoid overflowing here *)
+              incr l ;
+            done ;
+            if !p > n then !l else !l + 1
+        | exception Overflow -> l_underest
+        end
+      end
+      else 0
   end
-  else 0
 
 let[@inline] log2 n =
   log2sup n - 1
@@ -1410,11 +1521,13 @@ let valuation_of_2 n =
   done ;
   (!k, !m)
 *)
+
 (* Reading by chunks of 8 bits and using precomputed values for the last 8 bits
  * provides a significant speed-up. This implementation is 3.3 times faster than
  * the naive one.
  * NOTE: If we want to avoid spending 128 bytes of space, we can instead read by
  * chunks of 4 bits, and store 8 precomputed values. That is almost as fast. *)
+(*
 let valuation_of_2 =
   let values128 = "\007\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\004\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\005\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\004\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\006\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\004\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\005\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\004\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000" in
 fun n ->
@@ -1428,23 +1541,16 @@ fun n ->
   done ;
   let k = !k + (Char.code @@ String.unsafe_get values128 (!m land 127)) in
   (k, n asr k)
-(* The following implementation is constant‐time. However, benchmarking shows
- * that it only becomes faster than the naive implementation above when the
- * valuation is at least 14, which is very unlikely. With random integers, it is
- * about twice slower. *)
-(*
-let valuation_of_2 n =
-  (*! assert (n <> nan) ; !*)
-  assert (n <> 0) ;                  (*    n = 0b ???????10000 *)
-  let bits = (n lxor (n-1)) lsr 1 in (* bits = 0b 000000001111 *)
-  let k = (* we convert to float and get the exponent *)
-    if bits land (1 lsl 53) = 0 then
-      snd@@frexp (float bits)
-    else
-      54 + (snd@@frexp (float (bits lsr 54)))
-  in
-  (k, n asr k)
 *)
+
+(* The following implementation is branchless and constant-time. It is slightly
+ * faster than the version above and re-uses the precomputed values for log2. *)
+let valuation_of_2 n =
+  assert (n <> 0) ;          (*    n = 0b ???????10000 *)
+  let hbit = n land (-n) in  (* hbit = 0b 000000010000 *)
+  let k =
+    Char.code (String.unsafe_get magic_table_log2_of_pow2 (magic_hash hbit)) in
+  (k, n asr k)
 
 let smallest_root =
   let odd_prime_exponents = [| 3; 5; 7; 11; 13; 17; 19 |] in
@@ -1643,6 +1749,11 @@ let central_binom p =
  *     https://fishi.devtail.io/weblog/2015/06/25/computing-large-binomial-coefficients-modulo-prime-non-prime/
  *)
 
+
+(* The following implementation uses a bitwise trick to remove the lowest bit
+ * set (see Hacker’s Delight, 2nd ed, Fig 5-3). It does one iteration per bit
+ * set, which on average is quite slow. *)
+(*
 let number_of_bits_set n =
   let n = ref n in
   let count = ref 0 in
@@ -1651,6 +1762,39 @@ let number_of_bits_set n =
     incr count ;
   done ;
   !count
+*)
+
+(* The following implementation is branchless, constant-time, and much faster in
+ * practice (at least 4 times faster even when there is only 8 bits set). It is
+ * a divide-and-conquer algorithm that takes profit of bitwise parallelism.
+ * (see Hacker’s Delight, 2nd ed, Fig 5-2 plus a later comment) *)
+let number_of_bits_set x =
+  (* Here we use [Int64.to_int] so that this code also compiles on 32-bit OCaml
+   * (if we had written 63-bit [int] literals, the 32-bit compiler would fail).
+   * Besides, this same code works for both 32-bit and 64-bit OCaml, because
+   * [Int64.to_int] truncates the number to the right integer size.
+   * Let’s just hope the compiler optimizes these constant expressions… *)
+  (* add the adjacent bits pairwise, in parallel: *)
+  let x = x - ((x lsr 1) land Int64.to_int 0x55555555_55555555L) in
+  (* now add the 2-bit fields pairwise into 4-bit fields, in parallel: *)
+  let x = (x land Int64.to_int 0x33333333_33333333L)
+            + ((x lsr 2) land Int64.to_int 0x33333333_33333333L) in
+  (* now add the 4-bit fields pairwise into 8-bit fields, in parallel: *)
+  let x = (x + (x lsr 4)) land Int64.to_int 0x0F0F0F0F_0F0F0F0FL in
+  (* The rest of this function... *)
+(*
+  (* now add the 8-bit fields pairwise, in parallel: *)
+  let x = x + (x lsr 8) in
+  (* now add the 16-bit fields pairwise, in parallel: *)
+  let x = x + (x lsr 16) in
+  (* now add the 32-bit fields pairwise: *)
+  let x = x + (x lsr 32) in (* this line is broken on 32-bit OCaml *)
+  x land 0xFF
+*)
+  (* ... can be optimized like this: *)
+  (* now use a multiplication to add together all the 8-bit fields at once: *)
+  (x * Int64.to_int 0x01010101_01010101L) lsr (Sys.word_size - 8)
+
 
 let rand ?(min=0) ?(max=max_int) () =
   assert (min <> nan) ;
@@ -1746,6 +1890,7 @@ end
 
 
 (* Tests. *)
+(* FIXME: Use an actual tool for unit tests. *)
 
 let () =
   for _ = 1 to 100 do
@@ -1758,7 +1903,53 @@ let () =
     end ;
   done
 
-(* FIXME: Use an actual tool for unit tests. *)
+let () =
+  [
+    (0, 0); (1, 1); (2, 2); (3, 2); (4, 3); (5, 3); (6, 3); (7, 3);
+    (8, 4); (9, 4); (15, 4); (16, 5); (17, 5); (max_int, uint_size);
+  ] |>
+  List.iter begin fun (x, y) ->
+    assert (log2sup x = y) ;
+  end
+
+let () =
+  let last_pow10 = table_prev_pow10.(Array.length table_prev_pow10 - 1) in
+  begin match 10 *? last_pow10 with
+  | exception Overflow -> ()
+  | _ -> assert false
+  end ;
+  let again = ref true in
+  let i = ref 0 in
+  while !again do
+    begin match pow 10 !i with
+    | exception Overflow -> again := false
+    | p ->
+        assert (log (p-1) = !i-1) ;
+        assert (log p = !i) ;
+        assert (log (p+1) = !i) ;
+        incr i ;
+    end
+  done
+
+let () =
+  let last_pow60 = table_prev_pow60.(Array.length table_prev_pow60 - 1) in
+  begin match 60 *? last_pow60 with
+  | exception Overflow -> ()
+  | _ -> assert false
+  end ;
+  let again = ref true in
+  let i = ref 0 in
+  while !again do
+    begin match pow 60 !i with
+    | exception Overflow -> again := false
+    | p ->
+        assert (log ~base:60 (p-1) = !i-1) ;
+        assert (log ~base:60 p = !i) ;
+        assert (log ~base:60 (p+1) = !i) ;
+        incr i ;
+    end
+  done
+
 let () =
   assert (jacobi 2 3 = ~-1) ;
   assert (jacobi 2 9 = 1) ;

@@ -1,5 +1,11 @@
 # 0.3
 
+- optimize several functions in Arith:
+  + `mul`
+  + `log2` and `log2sup` (5x faster)
+  + `log` and `logsup` for bases 2, 16, 64, 10, 60
+  + `valuation_of_2`
+  + `number_of_bits_set` (7x times faster)
 - BREAKING: add notation `Arith.( ** )` for integer exponentiation
 - add `Arith.sdiv`
 - fix overflow in `Arith.mul_quo`
