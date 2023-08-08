@@ -38,26 +38,26 @@ let sign a =
 (* Below is a branchless implementation, which is 3.5 times faster than the
  * naive implementation. *)
 (*
-let sign a =
+let[@inline] sign a =
   (a asr (Sys.int_size - 1)) lor ((-a) lsr (Sys.int_size - 1))
 *)
 (* Using the standard comparison function, specialized to type `int`, is even
  * faster. Although the doc does not guarantee that `compare` always return
  * −1, 0 or +1, it is enforced in all OCaml versions up to 4.14. This is about
  * 4 times faster than the naive implementation. *)
-let sign a =
+let[@inline] sign a =
   (*! assert (a <> nan) ; !*)
   compare a 0
 
 (* This is a free generalization of [abs] and should be very fast (although not
  * benchmarked). *)
-let mul_sign s n =
+let[@inline] mul_sign s n =
   (*! assert (s <> nan) ; !*)
   (*! assert (n <> nan) ; !*)
   let u = s asr Sys.int_size in
   n lxor u - u
 
-let mul_sign0 s n =
+let[@inline] mul_sign0 s n =
   (*! assert (s <> nan) ; !*)
   (*! assert (n <> nan) ; !*)
   let u = s asr Sys.int_size in
@@ -68,7 +68,7 @@ let abs = abs
 *)
 (* Below is a branchless implementation, which is about 7.5 times faster than
  * the naive implementation. *)
-let abs n =
+let[@inline] abs n =
   (*! assert (n <> nan) ; !*)
   let u = n asr Sys.int_size in
   n lxor u - u
@@ -121,14 +121,14 @@ let compare a b =
 
 let equal : int -> int -> bool = (=)
 
-let pred a =
+let[@inline] pred a =
   assert (a <> nan) ;
   if a = min_int then
     raise Overflow
   else
     a - 1
 
-let succ a =
+let[@inline] succ a =
   assert (a <> nan) ;
   if a = max_int then
     raise Overflow
@@ -137,7 +137,7 @@ let succ a =
 
 let opp = ( ~- )
 
-let add a b =
+let[@inline] add a b =
   assert (a <> nan) ;
   assert (b <> nan) ;
   let s = a + b in
@@ -146,7 +146,7 @@ let add a b =
   else
     raise Overflow
 
-let sub a b =
+let[@inline] sub a b =
   assert (a <> nan) ;
   assert (b <> nan) ;
   let d = a - b in
@@ -298,7 +298,7 @@ let ( +? ) = add
 let ( -? ) = sub
 let ( *? ) = mul
 
-let mul2 a =
+let[@inline] mul2 a =
   assert (a <> nan) ;
   (* FIXME: This does not raise [Overflow] when [a = Stdlib.min_int/2] but
    * rather it returns [nan]; oh well… *)
@@ -307,7 +307,7 @@ let mul2 a =
   else
     raise Overflow
 
-let mul_pow2 k a =
+let[@inline] mul_pow2 k a =
   assert (0 <= k) ;
   assert (a <> nan) ;
   if abs a lsr max 0 (uint_size - k) = 0 then
@@ -392,19 +392,19 @@ let erem a b =
   else
     r + abs b
 
-let ediv2 a =
+let[@inline] ediv2 a =
   (*! assert (a <> nan) ; !*)
   (a asr 1, a land 1)
 
-let equo2 a =
+let[@inline] equo2 a =
   (*! assert (a <> nan) ; !*)
   a asr 1
 
-let erem2 a =
+let[@inline] erem2 a =
   (*! assert (a <> nan) ; !*)
   a land 1
 
-let ediv_pow2 a k =
+let[@inline] ediv_pow2 a k =
   assert (a <> nan) ;
   assert (0 <= k) ;
   (* [a asr uint_size] gives 0 if [a] ≥ 0 and −1 if [a] < 0 *)
@@ -415,12 +415,12 @@ let ediv_pow2 a k =
   else
     raise Overflow
 
-let equo_pow2 a k =
+let[@inline] equo_pow2 a k =
   assert (a <> nan) ;
   assert (0 <= k) ;
   a asr (min k uint_size)
 
-let erem_pow2 a k =
+let[@inline] erem_pow2 a k =
   assert (a <> nan) ;
   assert (0 <= k) ;
   if k <= uint_size then
@@ -435,14 +435,14 @@ let pow =
   (*! assert (k <> nan) ; !*)
   Common.pow ~mult:mul ~unit:1
 
-let pow2 k =
+let[@inline] pow2 k =
   assert (0 <= k) ;
   if k < uint_size then
     1 lsl k
   else
     raise Overflow
 
-let powm1 k =
+let[@inline] powm1 k =
   (*! assert (k <> nan) ; !*)
   1 - ((k land 1) lsl 1)
 
@@ -560,10 +560,10 @@ let logsup ?(base=10) n =
   end
   else 0
 
-let log2 n =
+let[@inline] log2 n =
   log2sup n - 1
 
-let log ?base n =
+let[@inline] log ?base n =
   logsup ?base n - 1
 
 let is_pow ?(base=10) ?exp n =
@@ -580,7 +580,7 @@ let is_pow ?(base=10) ?exp n =
       (exp >= 0 || abs base = 1) && (try pow base (abs exp) = n with Overflow -> false)
   end
 
-let is_pow2 n =
+let[@inline] is_pow2 n =
   n land (n - 1) = 0 && n > 0
 
 (* This function is placed here because it uses [log2sup]. *)
@@ -1079,7 +1079,7 @@ let is_kth_pow ~k ?root n =
     | Some r -> (try pow r k = n with Overflow -> false)
     end
 
-let is_multiple ~of_:a b =
+let[@inline] is_multiple ~of_:a b =
   assert (a <> nan) ;
   assert (b <> nan) ;
   begin try
@@ -1088,11 +1088,11 @@ let is_multiple ~of_:a b =
     b = 0
   end
 
-let is_even a =
+let[@inline] is_even a =
   (*! assert (a <> nan) ; !*)
   a land 1 = 0
 
-let is_odd a =
+let[@inline] is_odd a =
   (*! assert (a <> nan) ; !*)
   a land 1 <> 0
 

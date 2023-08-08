@@ -7,6 +7,8 @@
 - optimize Modular.mul
 - micro-optimize (branchless code) Modular base operations
 - micro-optimize branches by putting the common case first?
+- systematically distinguish user-facing functions that check their inputs, from
+  internal functions that don’t (user-facing functions are just wrappers)
 - add inlining hints, turn Modular.to_int into external identity, etc.
 - Modular.of_int: add a test for the common scenario where no modulo is needed?
   needs benchmarking
