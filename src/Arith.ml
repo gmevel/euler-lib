@@ -1749,8 +1749,8 @@ end
 
 let () =
   for _ = 1 to 100 do
-    let a = rand () in
-    let b = rand () in
+    let a = rand ~max:(2 * lower_half + 1) () in
+    let b = rand ~max:(2 * lower_half + 1) () in
     let ab = unsigned_long_mul a b in
     begin match mul a b with
     | c                  -> assert (ab = { hi = 0 ; lo = c })
