@@ -592,23 +592,52 @@ and magic_table_log2_of_pow2 =
   else
     assert false
 
-(* This table contains 0, followed by all powers of 10 that do not overflow: *)
-let table_prev_pow10 =
-  Array.init (Sys.int_size * 3 / 10 + 2)
-    (fun i -> if i = 0 then 0 else pow 10 (i-1))
+(* This table contains 0, followed by all powers of [base] that do not overflow,
+ * (if the [max_exp] is correct]), followed by [max_int]+1: *)
+let make_table_prev_pow ~base ~max_exp =
+  Array.init (max_exp + 3)
+    (fun i ->
+      if i = 0 then 0
+      else if i-1 <= max_exp then pow base (i-1)
+      else Stdlib.min_int)
 
-(* Ditto for 60: *)
-let table_prev_pow60 =
-  Array.init (Sys.int_size / 6 + 2)
-    (fun i -> if i = 0 then 0 else pow 60 (i-1))
+(* NOTE: these max exponents are correct for Sys.int_size = 31, 32, 63, 64. *)
+let table_prev_pow3 = make_table_prev_pow ~base:3 ~max_exp:(uint_size * 12/19)
+let table_prev_pow5 = make_table_prev_pow ~base:5 ~max_exp:(uint_size * 3/7)
+let table_prev_pow6 = make_table_prev_pow ~base:6 ~max_exp:(uint_size * 5/13)
+let table_prev_pow7 = make_table_prev_pow ~base:7 ~max_exp:(uint_size * 4/11)
+(*! let table_prev_pow9 = make_table_prev_pow ~base:9 ~max_exp:(uint_size * 4/13) !*)
+let table_prev_pow10 = make_table_prev_pow ~base:10 ~max_exp:(uint_size * 3/10)
+let table_prev_pow60 = make_table_prev_pow ~base:60 ~max_exp:(uint_size / 6)
+
+(* TODO: Since we have precomputed powers of small bases, we should also
+ * optimize [pow] so that it takes advantage of it. *)
 
 (* By picking a good initial estimation for the logarithm, our implementation is
  * likely much faster than the naive implementation (not checked thoroughly). *)
 let logsup ?(base=10) n =
   begin match base with
   |  2 -> log2sup n
-  | 16 -> (log2sup n + 3) (* / 4 *) lsr 2
-  | 64 -> (log2sup n + 5) / 6
+  |  3 ->
+      let l = (81 * log2sup n + 127) (* / 128 *) lsr 7 in
+      l + ((n - table_prev_pow3.!(l)) asr Sys.int_size)
+  |  4 -> (log2sup n + 1) (* / 2 *) lsr 1
+  |  5 ->
+      let l = (7 * log2sup n + 15) (* / 16 *) lsr 4 in
+      l + ((n - table_prev_pow5.!(l)) asr Sys.int_size)
+  |  6 ->
+      let l = (25 * log2sup n + 63) (* / 64 *) lsr 6 in
+      l + ((n - table_prev_pow6.!(l)) asr Sys.int_size)
+  |  7 ->
+      let l = (23 * log2sup n + 63) (* / 64 *) lsr 6 in
+      l + ((n - table_prev_pow7.!(l)) asr Sys.int_size)
+  |  8 -> (log2sup n + 2) / 3
+  |  9 ->
+      (*! let l = (41 * log2sup n + 127) (* / 128 *) lsr 7 in !*)
+      (*! l + ((n - table_prev_pow9.!(l)) asr Sys.int_size) !*)
+      (* No need to store the powers of 9, just use the logarithm base 3: *)
+      let l3 = (81 * log2sup n + 127) (* / 128 *) lsr 7 in
+      (l3 + ((n - table_prev_pow3.!(l3)) asr Sys.int_size) + 1) (* / 2 *) lsr 1
   | 10 ->
       (* See Hacker’s Delight (2nd ed, Chapter 11, text below Figure 11-11)
        * for an explanation of the method. Here, since we are not computing
@@ -626,12 +655,15 @@ let logsup ?(base=10) n =
        *     log_B(2) ≤ c < (1 + N×log_B(2)) / (1 + N)
        *)
       let l = (39 * log2sup n + 127) (* / 128 *) lsr 7 in
-      (*! if n >= table_prev_pow10.(l) then l else l - 1 !*)
       l + ((n - table_prev_pow10.!(l)) asr Sys.int_size)
       (* ^ this hack avoids branching: [(x - y) asr Sys.int_size]
-       * returns 0 if [x - y >= 0] and -1 if [x - y < 0]. *)
+       *   returns 0 if [x - y >= 0] and -1 if [x - y < 0]. *)
+  | 16 -> (log2sup n + 3) (* / 4 *) lsr 2
+  | 32 -> (log2sup n + 4) / 5
+  | 64 -> (log2sup n + 5) / 6
+  | 128 -> (log2sup n + 6) / 7
+  | 256 -> (log2sup n + 7) (* / 8 *) lsr 3
   | 60 ->
-      (* Same idea. *)
       let l = (11 * log2sup n + 63) (* / 64 *) lsr 6 in
       l + ((n - table_prev_pow60.!(l)) asr Sys.int_size)
   | _ ->
@@ -1596,10 +1628,7 @@ let smallest_root =
      * decreasing order, we will reconstruct [k] from its prime factorization.
      * It is thus enough to consider the prime exponents less than 22.
      *
-     * We also keep in mind that [k] must be a divisor of [v235].
-     *
-     *
-     *)
+     * We also keep in mind that [k] must be a divisor of [v235]. *)
     else begin
       (* invariant:
        *   - [!r]^[!k] = [n]
@@ -1897,6 +1926,12 @@ end
 (* Tests. *)
 (* FIXME: Use an actual tool for unit tests. *)
 
+let does_overflow f =
+  begin match f () with
+  | exception Overflow -> true
+  | _                  -> false
+  end
+
 let () =
   for _ = 1 to 100 do
     let a = rand ~max:(2 * lower_half + 1) () in
@@ -1917,43 +1952,45 @@ let () =
     assert (log2sup x = y) ;
   end
 
-let () =
-  let last_pow10 = table_prev_pow10.(Array.length table_prev_pow10 - 1) in
-  begin match 10 *? last_pow10 with
-  | exception Overflow -> ()
-  | _ -> assert false
-  end ;
+let test_table_pow base table =
+  assert (table.(Array.length table - 1) = Stdlib.min_int) ;
+  assert (does_overflow (fun () -> base *? table.(Array.length table - 2)))
+
+let test_log base =
+  assert (log ~base 0 = -1) ;
   let again = ref true in
   let i = ref 0 in
   while !again do
-    begin match pow 10 !i with
-    | exception Overflow -> again := false
+    begin match pow base !i with
+    | exception Overflow ->
+        again := false
     | p ->
-        assert (log (p-1) = !i-1) ;
-        assert (log p = !i) ;
-        assert (log (p+1) = !i) ;
+        assert (log ~base (p-1) = !i-1) ;
+        assert (log ~base p = !i) ;
+        assert (log ~base (p+1) = if (base,!i) = (2,0) then 1 else !i) ;
         incr i ;
     end
-  done
+  done ;
+  let l = log ~base max_int in
+  let p = pow base l in
+  assert (p <= max_int) ;
+  assert (does_overflow (fun () -> p *? base))
 
 let () =
-  let last_pow60 = table_prev_pow60.(Array.length table_prev_pow60 - 1) in
-  begin match 60 *? last_pow60 with
-  | exception Overflow -> ()
-  | _ -> assert false
-  end ;
-  let again = ref true in
-  let i = ref 0 in
-  while !again do
-    begin match pow 60 !i with
-    | exception Overflow -> again := false
-    | p ->
-        assert (log ~base:60 (p-1) = !i-1) ;
-        assert (log ~base:60 p = !i) ;
-        assert (log ~base:60 (p+1) = !i) ;
-        incr i ;
-    end
-  done
+  test_table_pow 3 table_prev_pow3 ;
+  test_table_pow 5 table_prev_pow5 ;
+  test_table_pow 6 table_prev_pow6 ;
+  test_table_pow 7 table_prev_pow6 ;
+  (*! test_table_pow 9 table_prev_pow9 ; !*)
+  test_table_pow 10 table_prev_pow10 ;
+  test_table_pow 60 table_prev_pow60 ;
+  for base = 2 to 20 do
+    test_log base
+  done ;
+  test_log 32 ;
+  test_log 64 ;
+  test_log 60 ;
+  ()
 
 let () =
   assert (jacobi 2 3 = ~-1) ;
