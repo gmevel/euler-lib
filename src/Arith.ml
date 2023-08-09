@@ -458,7 +458,7 @@ let[@inline] erem_pow2 a k =
   else
     raise Overflow
 
-let pow =
+let pow_ =
   (*! assert (a <> nan) ; !*)
   (*! assert (k <> nan) ; !*)
   Common.pow ~mult:mul ~unit:1
@@ -473,6 +473,107 @@ let[@inline] pow2 k =
 let[@inline] powm1 k =
   (*! assert (k <> nan) ; !*)
   1 - ((k land 1) lsl 1)
+
+(* We precompute powers of small bases. This is useful for a fast logarithm.
+ *
+ * The helper function below builds a table which contains 0, followed by all
+ * powers of [base] that do not overflow (if the provided [max_exp] is correct),
+ * followed by [max_int]+1: *)
+let make_table_prev_pow ~base ~max_exp =
+  Array.init (max_exp + 3)
+    (fun i ->
+      if i = 0 then 0
+      else if i-1 <= max_exp then pow_ base (i-1)
+      else Stdlib.min_int)
+
+(* NOTE: these max exponents are correct for Sys.int_size = 31, 32, 63, 64. *)
+let table_prev_pow3 = make_table_prev_pow ~base:3 ~max_exp:(uint_size * 12/19)
+let table_prev_pow5 = make_table_prev_pow ~base:5 ~max_exp:(uint_size * 3/7)
+let table_prev_pow6 = make_table_prev_pow ~base:6 ~max_exp:(uint_size * 5/13)
+let table_prev_pow7 = make_table_prev_pow ~base:7 ~max_exp:(uint_size * 4/11)
+(*! let table_prev_pow9 = make_table_prev_pow ~base:9 ~max_exp:(uint_size * 4/13) !*)
+let table_prev_pow10 = make_table_prev_pow ~base:10 ~max_exp:(uint_size * 3/10)
+let table_prev_pow60 = make_table_prev_pow ~base:60 ~max_exp:(uint_size / 6)
+
+(* Since we have precomputed powers of small bases, we also let [pow] take
+ * advantage of it.
+ *
+ * TODO: benchmark this...
+ *)
+let rec pow a k =
+  (*! assert (a <> nan) ; !*)
+  assert (0 <= k) ;
+  begin match a with
+  | -1 -> powm1 k
+  | 0 -> if k = 0 then 1 else 0
+  | 1 -> 1
+  | 2 -> pow2 k
+  | 3 ->
+      if k < Array.length table_prev_pow3 - 2
+      then table_prev_pow3.!(k+1)
+      else raise Overflow
+  | 4 -> pow2 (mul2 k)
+  | 5 ->
+      if k < Array.length table_prev_pow5 - 2
+      then table_prev_pow5.!(k+1)
+      else raise Overflow
+  | 6 ->
+      if k < Array.length table_prev_pow6 - 2
+      then table_prev_pow6.!(k+1)
+      else raise Overflow
+      (* No need to store the powers of 6, we can use the fact that 6 = 2×3: *)
+      (*! if k < Array.length table_prev_pow3 - 2 !*)
+      (*! then mul_pow2 k table_prev_pow3.!(k+1) !*)
+      (*! else raise Overflow !*)
+  | 7 ->
+      if k < Array.length table_prev_pow7 - 2
+      then table_prev_pow7.!(k+1)
+      else raise Overflow
+  | 8 -> pow2 (3 *? k)
+  | 9 ->
+      (*! if k < Array.length table_prev_pow9 - 2 !*)
+      (*! then table_prev_pow9.!(k+1) !*)
+      (*! else raise Overflow !*)
+      (* No need to store the powers of 9, we can use the fact that 9 = 3²: *)
+      if k < Array.length table_prev_pow3 - 2
+      then let p3 = table_prev_pow3.!(k+1) in p3 *? p3
+      else raise Overflow
+  | 10 ->
+      if k < Array.length table_prev_pow10 - 2
+      then table_prev_pow10.!(k+1)
+      else raise Overflow
+  | 16 -> pow2 (mul_pow2 2 k)
+  | 32 -> pow2 (5 *? k)
+  | 64 -> pow2 (6 *? k)
+  | 128 -> pow2 (7 *? k)
+  | 256 -> pow2 (mul_pow2 3 k)
+  | _ when a < 0 && -10 <= a ->
+      mul_sign (k lsl uint_size) (pow (-a) k)
+  | _ ->
+      (* Whenever possible, we reduce a in order to take profit
+       * from the special cases when a is small. *)
+      (* [valuation_of_2] is not defined yet: *)
+      (*! let (val2, a') = valuation_of_2 a in !*)
+      (*! if abs a' <= 10 then !*)
+      (*!   mul_pow2 (val2 *? k) (pow a' k) !*)
+      (*! else !*)
+      if a land 1 = 0 then
+        if a land 0b11 = 0 then
+          if a land 0b1111 = 0 then
+            if a land 0b1111_1111 = 0 then
+              mul_pow2 (mul_pow2 3 k) (pow (a asr 8) k)
+            else mul_pow2 (mul_pow2 2 k) (pow (a asr 4) k)
+          else mul_pow2 (mul2 k) (pow (a asr 2) k)
+        else mul_pow2 k (pow (a asr 1) k)
+      else
+        begin match k with
+        | 0 -> 1
+        | 1_-> a
+        | 2 -> a *? a
+        | 3 -> a *? a *? a
+        | _ -> pow_ a k
+        end
+  end
 
 (* Here is how to compute [log2sup] using floating-point operations.
  * Don’t use it, it is much slower (about 5 times slower) than our best solution
@@ -592,27 +693,6 @@ and magic_table_log2_of_pow2 =
   else
     assert false
 
-(* This table contains 0, followed by all powers of [base] that do not overflow,
- * (if the [max_exp] is correct]), followed by [max_int]+1: *)
-let make_table_prev_pow ~base ~max_exp =
-  Array.init (max_exp + 3)
-    (fun i ->
-      if i = 0 then 0
-      else if i-1 <= max_exp then pow base (i-1)
-      else Stdlib.min_int)
-
-(* NOTE: these max exponents are correct for Sys.int_size = 31, 32, 63, 64. *)
-let table_prev_pow3 = make_table_prev_pow ~base:3 ~max_exp:(uint_size * 12/19)
-let table_prev_pow5 = make_table_prev_pow ~base:5 ~max_exp:(uint_size * 3/7)
-let table_prev_pow6 = make_table_prev_pow ~base:6 ~max_exp:(uint_size * 5/13)
-let table_prev_pow7 = make_table_prev_pow ~base:7 ~max_exp:(uint_size * 4/11)
-(*! let table_prev_pow9 = make_table_prev_pow ~base:9 ~max_exp:(uint_size * 4/13) !*)
-let table_prev_pow10 = make_table_prev_pow ~base:10 ~max_exp:(uint_size * 3/10)
-let table_prev_pow60 = make_table_prev_pow ~base:60 ~max_exp:(uint_size / 6)
-
-(* TODO: Since we have precomputed powers of small bases, we should also
- * optimize [pow] so that it takes advantage of it. *)
-
 (* By picking a good initial estimation for the logarithm, our implementation is
  * likely much faster than the naive implementation (not checked thoroughly). *)
 let logsup ?(base=10) n =
@@ -687,7 +767,7 @@ let logsup ?(base=10) n =
          * base=3 suggest that in practice, we iter much less than that(?). *)
         let l_underest = (log2sup n - 1) / log2sup (base-1) + 1 in
         (*! let l_overest = log2sup (n-1) / (log2sup base - 1) + 1 in !*)
-        begin match pow base l_underest with
+        begin match pow_ base l_underest with
         | p ->
             (* Divisions are costly, we rather do repeated multiplications than
              * repeated divisions; we need one division for overflow control,

@@ -2,6 +2,7 @@
 
 - optimize several functions in Arith:
   + `mul`
+  + `pow` for small bases
   + `log2` and `log2sup` (5x faster)
   + `log` and `logsup` for bases 2, 16, 64, 10, 60
   + `valuation_of_2`
