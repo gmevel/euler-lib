@@ -3,6 +3,10 @@
  * stdlib: *)
 open! Stdcompat
 
+(* Unchecked indexing, useful for precomputed values: *)
+let ( .!( ) ) = Array.unsafe_get
+let[@inline] ( .![ ] ) s i = (Char.code[@inlined]) (String.unsafe_get s i)
+
 (* We treat this native integer as an invalid value. We give it a name in this
  * module so that we can refer to it even though we rebind the name min_int. *)
 let nan = Stdlib.min_int
@@ -499,7 +503,7 @@ let log2sup =
  * (see Hacker’s Delight, 2nd ed, Figure 5-12 and the text below) *)
 let log2sup =
   (* We use precomputed values for the log2sup of 8-bit numbers: *)
-  let log2sup_8bit =
+  let table_log2sup_8bit =
     "\000\001\002\002\003\003\003\003\004\004\004\004\004\004\004\004\005\005\005\005\005\005\005\005\005\005\005\005\005\005\005\005\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b"
   in
 fun n ->
@@ -510,7 +514,7 @@ fun n ->
   let hi = !n lsr 31 in if hi <> 0 then (k := !k + 31 ; n := hi) ;
   let hi = !n lsr 16 in if hi <> 0 then (k := !k + 16 ; n := hi) ;
   let hi = !n lsr  8 in if hi <> 0 then (k := !k +  8 ; n := hi) ;
-  !k + Char.code (String.unsafe_get log2sup_8bit !n)
+  !k + table_log2sup_8bit.![!n]
 
 (* The following branchless implementation is almost as fast as the one above
  * when benchmarked in isolation (1.2 times slower), and it seems to fare better
@@ -526,7 +530,7 @@ let rec log2sup n =
   let n = n lor (n lsr 16) in
   let n = n lor (n lsr 32) in  (* n = 0b 000000011111 *)
   let n = n + 1 in             (* n = 0b 000000100000 *)
-  Char.code (String.unsafe_get magic_table_log2_of_pow2 (magic_hash n))
+  magic_table_log2_of_pow2.![magic_hash n]
 
 (* For 64-bit OCaml: This function returns a 6-bit number, ie. between 0 and 63.
  * It associates a distinct hash:
@@ -623,13 +627,13 @@ let logsup ?(base=10) n =
        *)
       let l = (39 * log2sup n + 127) (* / 128 *) lsr 7 in
       (*! if n >= table_prev_pow10.(l) then l else l - 1 !*)
-      l + ((n - Array.unsafe_get table_prev_pow10 l) asr Sys.int_size)
+      l + ((n - table_prev_pow10.!(l)) asr Sys.int_size)
       (* ^ this hack avoids branching: [(x - y) asr Sys.int_size]
        * returns 0 if [x - y >= 0] and -1 if [x - y < 0]. *)
   | 60 ->
       (* Same idea. *)
       let l = (11 * log2sup n + 63) (* / 64 *) lsr 6 in
-      l + ((n - Array.unsafe_get table_prev_pow60 l) asr Sys.int_size)
+      l + ((n - table_prev_pow60.!(l)) asr Sys.int_size)
   | _ ->
       assert (2 <= base) ;
       assert (0 <= n) ;
@@ -1529,7 +1533,9 @@ let valuation_of_2 n =
  * chunks of 4 bits, and store 8 precomputed values. That is almost as fast. *)
 (*
 let valuation_of_2 =
-  let values128 = "\007\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\004\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\005\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\004\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\006\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\004\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\005\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\004\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000" in
+  let table_val2_7bit =
+    "\007\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\004\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\005\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\004\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\006\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\004\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\005\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000\004\000\001\000\002\000\001\000\003\000\001\000\002\000\001\000"
+  in
 fun n ->
   (*! assert (n <> nan) ; !*)
   assert (n <> 0) ;
@@ -1539,7 +1545,7 @@ fun n ->
     k := !k + 8 ;
     m := !m asr 8 ;
   done ;
-  let k = !k + (Char.code @@ String.unsafe_get values128 (!m land 127)) in
+  let k = !k + table_val2_7bit.![!m land 127] in
   (k, n asr k)
 *)
 
@@ -1548,8 +1554,7 @@ fun n ->
 let valuation_of_2 n =
   assert (n <> 0) ;          (*    n = 0b ???????10000 *)
   let hbit = n land (-n) in  (* hbit = 0b 000000010000 *)
-  let k =
-    Char.code (String.unsafe_get magic_table_log2_of_pow2 (magic_hash hbit)) in
+  let k = magic_table_log2_of_pow2.![magic_hash hbit] in
   (k, n asr k)
 
 let smallest_root =
