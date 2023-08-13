@@ -1,21 +1,23 @@
-Lister les triplets pythagoriciens primitifs :
-(a, b, c) entiers positifs tels que
-  →  a² + b² = c²
+TRIPLET PYTHAGORICIEN :
+  →  (a, b, c) entiers strictement positifs tels que a² + b² = c²
+triplet pythagoricien PRIMITIF : on ajoute les conditions suivantes :
   →  a ∧ b ∧ c = 1
   →  a impair, b pair, c impair
 
-On peut les décrire par deux paramètres entiers (d, e) tels que
+On peut décrire les triplets primitifs par 2 paramètres entiers (d, e) tels que
   →  0 < d < e
   →  d ∧ e = 1
+  →  d et e sont impairs
 ainsi :
   {  a ≔ d e
   {  b ≔ (e² − d²) ∕ 2
   {  c ≔ (e² + d²) ∕ 2  =  b + d²
 De plus, a < b équivaut à d < (√2−1) e.
 
-On peut aussi les décrire par deux paramètres entiers (u, v) tels que
+On peut décrire les triplets primitifs par 2 paramètres entiers (u, v) tels que
   →  0 < u < v
   →  u ∧ v = 1
+  →  u et v sont de parités différentes
 ainsi :
   {  b ≔ 2 u v
   {  a ≔ v² − u²
@@ -25,6 +27,9 @@ De plus, b < a équivaut à u < (√2−1) v.
 Correspondance entre les deux systèmes paramétriques :
   {  d = v − u        {  u = (e − d) ∕ 2
   {  e = v + u        {  v = (e + d) ∕ 2
+
+Les triplets non-forcément primitifs sont décrits par la donnée
+d’un triplet primitif et d’un facteur multiplicatif k ≥ 1.
 
 --------------------------------------------------------------------------------
 
