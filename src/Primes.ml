@@ -1103,6 +1103,59 @@ fun ~first_primes n ->
  * 100. *)
 let is_prime = is_prime_aux ~first_primes:primes_under_100
 
+(* NOTE: I tried optimizing trial division by bundling together as many primes
+ * as possible (i.e. such that their product does not overflow), and test GCD
+ * with their product rather than divisibility with individual primes.
+ * Unfortunately It is not faster for primes up to 100, and much slower for
+ * primes up to 10 000. The code is below.
+ *)
+(*
+let is_prime__trial10000 = is_prime_aux ~first_primes:primes_under_10_000
+
+let prime_bundles primes =
+  let bundles = ref [] in
+  let i = ref 0 in
+  while !i < Array.length primes do
+    let first_prime = primes.(!i) in
+    let prod = ref 1 in
+    let bitset = ref 0 in
+    let j = ref !i in
+    begin try while !j < Array.length primes && primes.(!j) - first_prime < Sys.int_size do
+      prod := Arith.mul !prod primes.(!j) ;
+      bitset := !bitset lor (1 lsl (primes.(!j) - first_prime)) ;
+      j := !j + 1 ;
+    done with Arith.Overflow -> () end ;
+    let last_prime = primes.(!j-1) in
+    bundles := (!prod, !bitset, first_prime, last_prime) :: !bundles ;
+    i := !j ;
+  done ;
+  Array.of_list (List.rev !bundles)
+
+let prime_bundles_under_100 = prime_bundles primes_under_100
+let prime_bundles_under_10_000 = prime_bundles primes_under_10_000
+
+let is_prime__using_bundles prime_bundles max_prime_square n =
+  begin match
+    prime_bundles |>
+    Array.find_opt begin fun (prod, _bitset, _first_prime, _last_prime) ->
+      (*! assert (n >= _first_prime) ; !*)
+      Arith.gcd prod n <> 1
+    end
+  with
+  | Some (_prod, bitset, first_prime, last_prime) ->
+      n <= last_prime
+      && (bitset lsr (n - first_prime)) land 1 <> 0
+  | None ->
+      n < max_prime_square
+      || is_prime_aux ~first_primes:[||] n
+  end
+
+let is_prime__using_bundles100 =
+  is_prime__using_bundles prime_bundles_under_100  10_201 (* = 101² *)
+let is_prime__using_bundles10000 =
+  is_prime__using_bundles prime_bundles_under_10_000  100_140_049 (* = 10_007² *)
+*)
+
 (******************************************************************************)
 
 (* TODO: Use twisted Edwards curves instead of Weierstrass curves?
