@@ -8,6 +8,9 @@
 - add inlining hints, turn Modular.to_int into external identity, etc.
 - Modular.of_int: add a test for the common scenario where no modulo is needed?
   needs benchmarking
+- implement fast division/remainder by small constants (see Hacker’s Delight)
+  + useful for is_cube / icbrt_if_cube (needs computing remainder modulo 9)
+- add is_cube, icbrt_if_cube
 - improve interface for computing multiplicative orders modulo [m]:
   having to pass factorizations explicitly is annoying;
   use a cache for already-copmuted factorizations?

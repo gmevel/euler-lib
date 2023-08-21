@@ -334,6 +334,12 @@ module Arith : sig
       It is equivalent to [kth_root ~k:2 n] but should be faster. *)
   val isqrt : int -> int
 
+  (** [isqrt_if_square n] is the integer square root of [n]
+      if [n] is a perfect square, or [None] otherwise.
+      When [n] is not square, this is faster than combining
+      {!isqrt} with {!is_square}. *)
+  val isqrt_if_square : int -> int option
+
   (** [icbrt n] is the integer cube root of [n], rounded towards zero.
       In other words, it is [sign n × r] where [r] is the greatest integer such
       that [r]³ ≤ |[n]|.

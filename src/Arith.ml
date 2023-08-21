@@ -21,6 +21,7 @@ let uint_size = Sys.int_size - 1
 
 let uint_half_size = uint_size / 2
 let lower_half = (1 lsl uint_half_size) - 1
+let sqrt_max_int = lower_half
 
 exception Overflow
 
@@ -1069,8 +1070,8 @@ let mul_erem a b c =
   assert (c <> nan) ;
   _modular_mul (erem a c) (erem b c) (abs c)
 
-(* The following implementation of the integer square root is guaranteed
- * correct, but is MUCH slower than a naive floating‐point computation. *)
+(* The following implementation of the integer square root only uses integers,
+ * but is MUCH slower than a naive floating‐point computation. *)
 (*
 let isqrt n =
   assert (0 <= n) ;
@@ -1257,7 +1258,7 @@ let () =
  *     squares(p²) = (p² − p + 2) ∕ 2
  *)
 
-let is_square =
+let is_square_mod_wordsz =
   (* To quickly filter out many non-squares, we test whether the number is
    * a square modulo word_size (32 or 64).
    *
@@ -1281,17 +1282,29 @@ let is_square =
     (1 lsl 16) lor (1 lsl 17) lor (1 lsl 25) lor (1 lsl 33) lor
     (1 lsl 36) lor (1 lsl 41) lor (1 lsl 49) lor (1 lsl 57)
   in
-  let[@inline] is_square_mod_wordsz n =
-    squares_mod_wordsz land (1 lsl n) <> 0
-  in
-  let sqrt_max_int = 1 lsl (uint_size / 2) - 1 in
-fun ?root n ->
+fun[@inline] n ->
+  squares_mod_wordsz land (1 lsl n) <> 0
+
+let is_square ?root n =
   assert (n <> nan) ;
   assert (root <> Some nan) ;
   begin match root with
   | None   ->  is_square_mod_wordsz n && 0 <= n && let r = isqrt n in r * r = n
   | Some r ->  is_square_mod_wordsz n && abs r <= sqrt_max_int && r * r = n
   end
+
+let isqrt_if_square n =
+  assert (n <> nan) ;
+  if is_square_mod_wordsz n && 0 <= n then
+    let r = isqrt n in
+    if r * r = n then Some r else None
+  else
+    None
+
+(* TODO: we can do the same kind of optimization for cubes, and thus provide
+ * [is_cube] and [icbrt_if_cube], because there are only 3 cubes modulo 9
+ * (which are 0, 1, 8); and, again, this extends to higher powers of 3.
+ * However, for it to be interesting, we need a fast division by 9 (or by 3). *)
 
 let is_kth_pow ~k ?root n =
   assert (k <> nan) ;

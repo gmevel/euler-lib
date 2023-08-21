@@ -15,6 +15,7 @@
 - fix overflow in `Arith.gcdext`
 - let `Arith.gcdext` return minimal coefficients
 - add `Arith.{gcd,gcdext,lcm}_of_seq`
+- add `Arith.isqrt_if_square`
 - add functions related to integer powers and roots:
   + `Arith.is_pow`
   + `Arith.is_pow2`
