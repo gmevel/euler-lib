@@ -1235,12 +1235,17 @@ let default_number_of_tries = max_int
 let default_max_fact = 160
 
 (* Lenstra’s elliptic‐curve algorithm for finding a factor of [n].
+ *
  * @return a non‐trivial factor of [n].
  * @raise Not_found when no factor was found within the allowed time bounds
  * (which is highly unlikely with the default parameters).
  * @param tries The number of elliptic curves to try before resigning.
  * @param max_fact The “small exponents” tried by the algorithm are the
- * factorial numbers up to the factorial of [max_fact]. *)
+ * factorial numbers up to the factorial of [max_fact].
+ *
+ * Note: Very often, the factor found is prime, but not always
+ * (for example, n = 3577522661351062530 often yields a non‐prime factor).
+ *)
 let lenstra_find_factor ~tries ~max_fact n =
   let module EC = Make_EllipticCurve (struct let modulo = n end) in
   begin try
@@ -1258,6 +1263,65 @@ let lenstra_find_factor ~tries ~max_fact n =
     d
   end
 
+(* Fermat’s algorithm for finding a factor of [n] near its square root.
+ *
+ * @return a non-trivial factor of [n], or -1 if not found.
+ *
+ * When [n] is odd, it can always be factored as n = a² − b² = (a−b)×(a+b) for
+ * some a > b (indeed, n = u×v = ((u+v)/2)² − ((v−u)/2)² with u = a−b, v = a+b).
+ * Fermat’s algorithm looks for such a factorization, starting from the square
+ * root of n; hence, it eventually finds the factorization where u ≤ √n ≤ v are
+ * the closest to the square root of n. However the full method would take O(n)
+ * iterations, so we only do a fixed number of iterations, only to find factors
+ * near the square root.
+ *)
+let fermat_find_factor ~nb_iters n =
+  assert (0 < n) ;
+  assert (n land 1 <> 0) ;
+  let r = Arith.isqrt n in
+  (* if n = r² then we have found a factor: *)
+  if Arith.is_square ~root:r n then
+    (* TODO: in this case we should factorize r only once *)
+    r
+  (* otherwise, we look for a pair (a, b) such that b < a and n = a² − b²,
+   * by enumerating a and testing whether b² = n + a² is a perfect square;
+   * this converges faster than enumerating b, because a grows slower than b. *)
+  else begin
+    let a = ref (r + 1) in
+    let bb = ref (!a * !a - n) in (* bb ≤ 2×⌊√n⌋ << n, result doesn’t overflow *)
+    (* optimization: any perfect square must be congruent to 0 or 1 modulo 4;
+     * reasoning about parities shows that one value of b² out of 2 satisfies
+     * that property (when a is increased by 1, b² is increased by 2a + 1), so
+     * we can enumerate a by steps of 2. *)
+    if !bb land 2 <> 0 then begin
+      bb := !bb + (!a lsl 1) + 1 ; (* bb ≤ 4×√n + 1 << n, no overflow *)
+      a := !a + 1 ;
+    end ;
+    let exception Fermat_factor_found of int in
+    begin try
+      for _ = 1 to nb_iters do
+        begin match Arith.isqrt_if_square !bb with
+        | Some b ->
+            (* if n = a² − b² then n = (a−b)×(a+b), we have found a factor: *)
+            raise (Fermat_factor_found (!a - b))
+        | None   ->
+            (* we have a ≤ √n + 2×nb_iters, so a ≤ √2×√n for large enough n
+             * (we keep the number of iterations under a reasonable constant),
+             * so bb = a² − n does not overflow: *)
+            bb := !bb + ((!a + 1) lsl 2) ;
+            a := !a + 2 ;
+        end
+      done ;
+      -1
+    with Fermat_factor_found d ->
+      d
+    end
+  end
+
+(* The number of iterations of Fermat’s algorithm as used in our factorization
+ * function. *)
+let number_of_fermat_iterations = 1024
+
 (* Given the prime factorization of two integers, returns the factorization of
  * their product. *)
 let rec merge_factors li1 li2 =
@@ -1273,38 +1337,38 @@ let rec merge_factors li1 li2 =
         (p2, k2) :: merge_factors li1 li2'
   end
 
-(* The primality test we use for factorization.
- * Our factorization process first performs trial divisions with all numbers
- * below 10 000, so subsequent primality tests need not perform trial divisions
- * again. Moreover, we know that all numbers whose square root is less than
- * 10 007 (the smallest prime number that we did not ruled out) are prime. *)
-let lenstra_is_prime n =
-  n < 100_140_049 (* = 10_007² *)
-  || is_prime_aux ~first_primes:[||] n
-
-(* Factorization algorithm based on Lenstra’s factor searching. *)
-let rec lenstra_factors ~tries ~max_fact n =
+(* Recursive factorization function for numbers without small factors.
+ * Parameters [tries] and [max_fact] are for Lenstra’s algorithm. *)
+let rec nonsmall_factors ~tries ~max_fact n =
   assert (1 < n) ;
-  if lenstra_is_prime n then
+  (* Here we are assuming that trial divisions have been performed with all
+   * numbers below 10 000, so the primality test needs not perform it again.
+   * Moreover, we know that all numbers whose square root is less than 10 007
+   * (the smallest prime number that we did not ruled out) are prime. *)
+  if n < 100_140_049 (* = 10_007² *) || is_prime_aux ~first_primes:[||] n then
     [ (n, 1) ]
   else begin
-    begin match lenstra_find_factor ~tries ~max_fact n with
+    (* We use Fermat’s algorithm to find a factor near the square root;
+     * if unfruitful, we use Lenstra’s algorithm to find any factor. *)
+    begin match
+      let d = fermat_find_factor ~nb_iters:number_of_fermat_iterations n in
+      if d >= 0 then d else lenstra_find_factor ~tries ~max_fact n
+    with
     | d ->
         let (q, _r) = Arith.sdiv n d in
         assert (_r = 0 && d <> 1 && d <> n) ;
         merge_factors
-          (lenstra_factors ~tries ~max_fact d)
-          (lenstra_factors ~tries ~max_fact q)
-        (* Note: Very often, d is prime, but not always (for example,
-         * n = 3577522661351062530 often yields a non‐prime factor). *)
+          (nonsmall_factors ~tries ~max_fact d)
+          (nonsmall_factors ~tries ~max_fact q)
     | exception Not_found ->
         [ (~-n, 1) ]
     end
   end
 
+(* The complete factorization function. *)
 let factors ?(tries=default_number_of_tries) ?(max_fact=default_max_fact) n =
   assert (0 < n) ;
-  (* (1) Trial divisions. *)
+  (* (1) bounded trial divisions. *)
   let factored = ref [] in
   let n = ref n in
   let r = ref (Arith.isqrt !n) in
@@ -1326,11 +1390,11 @@ let factors ?(tries=default_number_of_tries) ?(max_fact=default_max_fact) n =
     end
   end ;
   let n = !n in
-  (* (2) Factorization using Lenstra algorithm. *)
+  (* (2) bounded Fermat’s algorithm and Lenstra’s algorithm, recursively. *)
   if n = 1 then
     List.rev !factored
   else
-    List.rev_append !factored (lenstra_factors ~tries ~max_fact n)
+    List.rev_append !factored (nonsmall_factors ~tries ~max_fact n)
 
 (******************************************************************************)
 
