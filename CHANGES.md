@@ -37,6 +37,11 @@
   + `Arith.prod_seq` -> `prod_of_seq`
   + `Primes.prime_seq` -> `gen_primes`
   + `Primes.primes` -> `iter_primes`
+- BREAKING: rename logarithm functions:
+  + `Arith.log` -> `Arith.ilog`
+  + `Arith.log2` -> `Arith.ilog2`
+  + `Arith.logsup` -> `Arith.ilogsup`
+  + `Arith.log2sup` -> `Arith.ilog2sup`
 
 # 0.2
 

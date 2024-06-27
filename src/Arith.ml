@@ -289,8 +289,8 @@ let mul a0 b0 =
 
 (* The following implementation of overflowing multiplication (adapted from
  * Hacker’s Delight, 2nd ed, Fig 2-2) is appealing but, outside of the fast
- * path, it calls [log2sup]; even with our fastest branchfree version of
- * [log2sup], it is about twice slower than the implementation above. *)
+ * path, it calls [ilog2sup]; even with our fastest branchfree version of
+ * [ilog2sup], it is about twice slower than the implementation above. *)
 (*
 let mul a0 b0 =
   assert (a0 <> nan) ;
@@ -303,14 +303,14 @@ let mul a0 b0 =
   else begin
     let m = a0 * b0 in
     (* There are 3 cases:
-     *   - if [log2 a + log2 b ≤ uint_size - 2], then [a * b] cannot overflow;
-     *   - if [log2 a + log2 b = uint_size - 1], then [a * b] may overflow but
+     *   - if [ilog2 a + ilog2 b ≤ uint_size - 2], then [a * b] cannot overflow;
+     *   - if [ilog2 a + ilog2 b = uint_size - 1], then [a * b] may overflow but
      *     the mathematical result is less than 2^(uint_size+1), so we can
      *     detect an overflow by checking the sign of the machine result;
-     *   - if [log2 a + log2 b ≥ uint_size], then [a * b] always overflows.
+     *   - if [ilog2 a + ilog2 b ≥ uint_size], then [a * b] always overflows.
      *)
-    let k = (log2sup_branchless[@inlined]) a in
-    let l = (log2sup_branchless[@inlined]) b in
+    let k = (ilog2sup_branchless[@inlined]) a in
+    let l = (ilog2sup_branchless[@inlined]) b in
     if k + l <= uint_size + 1 && (m lxor a0 lxor b0 >= 0 || m = 0) then
       (* ^ the last condition "|| m = 0" handles the case when a0 = 0 || b0 = 0;
        * this case would fail the sign test that precedes. *)
@@ -576,11 +576,11 @@ let rec pow a k =
         end
   end
 
-(* Here is how to compute [log2sup] using floating-point operations.
+(* Here is how to compute [ilog2sup] using floating-point operations.
  * Don’t use it, it is much slower (about 5 times slower) than our best solution
  * based on integer operations. *)
 (*
-let log2sup =
+let ilog2sup =
   (* As long as the integer can be represented exactly as a floating‐point
    * number (53 bits being the precision of floating‐point numbers), we can
    * convert to [float] and read its exponent. It gives wrong results for larger
@@ -601,11 +601,11 @@ let log2sup =
     assert false
 *)
 
-(* This is the fastest implementation of [log2sup], according to benchmarks.
+(* This is the fastest implementation of [ilog2sup], according to benchmarks.
  * (see Hacker’s Delight, 2nd ed, Figure 5-12 and the text below) *)
-let log2sup =
-  (* We use precomputed values for the log2sup of 8-bit numbers: *)
-  let table_log2sup_8bit =
+let ilog2sup =
+  (* We use precomputed values for the ilog2sup of 8-bit numbers: *)
+  let table_ilog2sup_8bit =
     "\000\001\002\002\003\003\003\003\004\004\004\004\004\004\004\004\005\005\005\005\005\005\005\005\005\005\005\005\005\005\005\005\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\006\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\007\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b"
   in
 fun n ->
@@ -616,13 +616,13 @@ fun n ->
   let hi = !n lsr 31 in if hi <> 0 then (k := !k + 31 ; n := hi) ;
   let hi = !n lsr 16 in if hi <> 0 then (k := !k + 16 ; n := hi) ;
   let hi = !n lsr  8 in if hi <> 0 then (k := !k +  8 ; n := hi) ;
-  !k + table_log2sup_8bit.![!n]
+  !k + table_ilog2sup_8bit.![!n]
 
 (* The following branchless implementation is almost as fast as the one above
  * when benchmarked in isolation (1.2 times slower), and it seems to fare better
  * with inlining (perhaps because it benefits from instruction parallelism?).
  * Besides, its precomputed table is also useful for [valuation_of_2]. *)
-let rec log2sup n =
+let rec ilog2sup n =
   assert (0 <= n) ;            (* n = 0b ???????10000 *)
   (* we leak the highest set bit to lower bits: *)
   let n = n lor (n lsr 1) in
@@ -632,7 +632,7 @@ let rec log2sup n =
   let n = n lor (n lsr 16) in
   let n = n lor (n lsr 32) in  (* n = 0b 000000011111 *)
   let n = n + 1 in             (* n = 0b 000000100000 *)
-  magic_table_log2_of_pow2.![magic_hash n]
+  magic_table_ilog2_of_pow2.![magic_hash n]
 
 (* For 64-bit OCaml: This function returns a 6-bit number, ie. between 0 and 63.
  * It associates a distinct hash:
@@ -682,11 +682,11 @@ and magic_hash =
   else
     assert false
 
-(* Precomputed hash table for the log2sup of powers of two.
+(* Precomputed hash table for the ilog2sup of powers of two.
  * It is such that if [h] is the magic_hash of 2^i where 0 ≤ i ≤ 63,
  * then the value of the table at index [h] is [i].
  *)
-and magic_table_log2_of_pow2 =
+and magic_table_ilog2_of_pow2 =
   if Sys.int_size = 31 then
     "\031\000\022\001\028\023\013\002\029\026\024\017\019\014\009\003\030\021\027\012\025\016\018\008\020\011\015\007\010\006\005\004"
   else if Sys.int_size = 63 then
@@ -696,56 +696,56 @@ and magic_table_log2_of_pow2 =
 
 (* By picking a good initial estimation for the logarithm, our implementation is
  * likely much faster than the naive implementation (not checked thoroughly). *)
-let logsup ?(base=10) n =
+let ilogsup ?(base=10) n =
   begin match base with
-  |  2 -> log2sup n
+  |  2 -> ilog2sup n
   |  3 ->
-      let l = (81 * log2sup n + 127) (* / 128 *) lsr 7 in
+      let l = (81 * ilog2sup n + 127) (* / 128 *) lsr 7 in
       l + ((n - table_prev_pow3.!(l)) asr Sys.int_size)
-  |  4 -> (log2sup n + 1) (* / 2 *) lsr 1
+  |  4 -> (ilog2sup n + 1) (* / 2 *) lsr 1
   |  5 ->
-      let l = (7 * log2sup n + 15) (* / 16 *) lsr 4 in
+      let l = (7 * ilog2sup n + 15) (* / 16 *) lsr 4 in
       l + ((n - table_prev_pow5.!(l)) asr Sys.int_size)
   |  6 ->
-      let l = (25 * log2sup n + 63) (* / 64 *) lsr 6 in
+      let l = (25 * ilog2sup n + 63) (* / 64 *) lsr 6 in
       l + ((n - table_prev_pow6.!(l)) asr Sys.int_size)
   |  7 ->
-      let l = (23 * log2sup n + 63) (* / 64 *) lsr 6 in
+      let l = (23 * ilog2sup n + 63) (* / 64 *) lsr 6 in
       l + ((n - table_prev_pow7.!(l)) asr Sys.int_size)
-  |  8 -> (log2sup n + 2) / 3
+  |  8 -> (ilog2sup n + 2) / 3
   |  9 ->
-      (*! let l = (41 * log2sup n + 127) (* / 128 *) lsr 7 in !*)
+      (*! let l = (41 * ilog2sup n + 127) (* / 128 *) lsr 7 in !*)
       (*! l + ((n - table_prev_pow9.!(l)) asr Sys.int_size) !*)
       (* No need to store the powers of 9, just use the logarithm base 3: *)
-      let l3 = (81 * log2sup n + 127) (* / 128 *) lsr 7 in
+      let l3 = (81 * ilog2sup n + 127) (* / 128 *) lsr 7 in
       (l3 + ((n - table_prev_pow3.!(l3)) asr Sys.int_size) + 1) (* / 2 *) lsr 1
   | 10 ->
       (* See Hacker’s Delight (2nd ed, Chapter 11, text below Figure 11-11)
        * for an explanation of the method. Here, since we are not computing
-       * floor(log10(x)) but rather log10sup = ceil(log10(x+1)), we use an
+       * floor(log10(x)) but rather ilog10sup = ceil(log10(x+1)), we use an
        * over-approximation rather than an under-approximation:
        *     log10 (2) = 39/128 − ε  where ε > 0
        * so that:
-       *     log10sup(x) = ceil(39/128 × log2sup(x)) − ε'  where ε' > 0.
+       *     ilog10sup(x) = ceil(39/128 × log2sup(x)) − ε'  where ε' > 0.
        * The constant 39/128 is accurate enough that, for any x < 2^64,
        * the error commited ε' is at most 1. Then, we test whether an error
        * has been commited by using just a table lookup.
        *
        * General formula: to commit an error of at most 1 for all x < 2^N when
        * computing the logarithm in base B, the chosen constant c must satisfy:
-       *     log_B(2) ≤ c < (1 + N×log_B(2)) / (1 + N)
+       *     ilog_B(2) ≤ c < (1 + N×log_B(2)) / (1 + N)
        *)
-      let l = (39 * log2sup n + 127) (* / 128 *) lsr 7 in
+      let l = (39 * ilog2sup n + 127) (* / 128 *) lsr 7 in
       l + ((n - table_prev_pow10.!(l)) asr Sys.int_size)
       (* ^ this hack avoids branching: [(x - y) asr Sys.int_size]
        *   returns 0 if [x - y >= 0] and -1 if [x - y < 0]. *)
-  | 16 -> (log2sup n + 3) (* / 4 *) lsr 2
-  | 32 -> (log2sup n + 4) / 5
-  | 64 -> (log2sup n + 5) / 6
-  | 128 -> (log2sup n + 6) / 7
-  | 256 -> (log2sup n + 7) (* / 8 *) lsr 3
+  | 16 -> (ilog2sup n + 3) (* / 4 *) lsr 2
+  | 32 -> (ilog2sup n + 4) / 5
+  | 64 -> (ilog2sup n + 5) / 6
+  | 128 -> (ilog2sup n + 6) / 7
+  | 256 -> (ilog2sup n + 7) (* / 8 *) lsr 3
   | 60 ->
-      let l = (11 * log2sup n + 63) (* / 64 *) lsr 6 in
+      let l = (11 * ilog2sup n + 63) (* / 64 *) lsr 6 in
       l + ((n - table_prev_pow60.!(l)) asr Sys.int_size)
   | _ ->
       assert (2 <= base) ;
@@ -766,8 +766,8 @@ let logsup ?(base=10) n =
          * which is not satisfying because a priori we might do O(l_underest)
          * iterations from the initial estimation; however quick tests with
          * base=3 suggest that in practice, we iter much less than that(?). *)
-        let l_underest = (log2sup n - 1) / log2sup (base-1) + 1 in
-        (*! let l_overest = log2sup (n-1) / (log2sup base - 1) + 1 in !*)
+        let l_underest = (ilog2sup n - 1) / ilog2sup (base-1) + 1 in
+        (*! let l_overest = ilog2sup (n-1) / (ilog2sup base - 1) + 1 in !*)
         begin match pow_ base l_underest with
         | p ->
             (* Divisions are costly, we rather do repeated multiplications than
@@ -788,11 +788,11 @@ let logsup ?(base=10) n =
       else 0
   end
 
-let[@inline] log2 n =
-  log2sup n - 1
+let[@inline] ilog2 n =
+  ilog2sup n - 1
 
-let[@inline] log ?base n =
-  logsup ?base n - 1
+let[@inline] ilog ?base n =
+  ilogsup ?base n - 1
 
 let is_pow ?(base=10) ?exp n =
   assert (base <> nan) ;
@@ -803,7 +803,7 @@ let is_pow ?(base=10) ?exp n =
       if base = 0 then n = 1 || n = 0
       else if base = 1 then n = 1
       else if base = -1 then abs n = 1
-      else n <> 0 && pow base (log ~base:(abs base) (abs n)) = n
+      else n <> 0 && pow base (ilog ~base:(abs base) (abs n)) = n
   | Some exp ->
       (exp >= 0 || abs base = 1) && (try pow base (abs exp) = n with Overflow -> false)
   end
@@ -811,7 +811,7 @@ let is_pow ?(base=10) ?exp n =
 let[@inline] is_pow2 n =
   n land (n - 1) = 0 && n > 0
 
-(* This function is placed here because it uses [log2sup]. *)
+(* This function is placed here because it uses [ilog2sup]. *)
 let unsigned_long_ediv (a : long_int) (b : int) : int * int =
   assert (a.hi >= 0 && a.lo >= 0) ;
   assert (b > 0) ;
@@ -850,7 +850,7 @@ let unsigned_long_ediv (a : long_int) (b : int) : int * int =
      *     40--90 (Intel Skylake, 2015), or 30 (AMD Zen1, 2016); cutting-edge
      *     processors bring it down to 15 (Intel IceLake, 2020; AMD Zen4, 2022).
      *)
-    let chunk_size = uint_size - log2sup (b-1) in (* threshold *)
+    let chunk_size = uint_size - ilog2sup (b-1) in (* threshold *)
     if chunk_size >= 20 then begin
       (* This is the chunked long division. *)
       let chunk_base = 1 lsl chunk_size in
@@ -1102,7 +1102,7 @@ let isqrt n =
      * indicate that, with that choice, the number of iterations of the
      * Babylonian method is at most 7 for 64‐bit OCaml): *)
     let rx = ref 0 in
-    let ry = ref (let k = log2sup n in 1 lsl ((k+1)/2)) in
+    let ry = ref (let k = ilog2sup n in 1 lsl ((k+1)/2)) in
     while
       let x = !ry in
       (* This sum does not overflow because its value is approximately 2×√n, far
@@ -1675,11 +1675,11 @@ fun n ->
 *)
 
 (* The following implementation is branchless and constant-time. It is slightly
- * faster than the version above and re-uses the precomputed values for log2. *)
+ * faster than the version above and re-uses the precomputed values for ilog2. *)
 let valuation_of_2 n =
   assert (n <> 0) ;          (*    n = 0b ???????10000 *)
   let hbit = n land (-n) in  (* hbit = 0b 000000010000 *)
-  let k = magic_table_log2_of_pow2.![magic_hash hbit] in
+  let k = magic_table_ilog2_of_pow2.![magic_hash hbit] in
   (k, n asr k)
 
 let smallest_root =
@@ -1715,7 +1715,7 @@ let smallest_root =
       (pow 2 (v2/v235) * pow 3 (v3/v235) * pow 5 (v5/v235), v235)
     (* Now the general case. We have ruled out the case where the only prime
      * factors of [n] are 2, 3, 5, so any root of [n] is at least equal to 7.
-     * Then, the root’s valuation is at most log7(max_int) = 22 on 64‐bit OCaml.
+     * Then, the root’s valuation is at most ilog7(max_int) = 22 on 64‐bit OCaml.
      *
      * Instead of checking whether [n] is a [k]-th pow for every possible [k] in
      * decreasing order, we will reconstruct [k] from its prime factorization.
@@ -2042,15 +2042,15 @@ let () =
     (8, 4); (9, 4); (15, 4); (16, 5); (17, 5); (max_int, uint_size);
   ] |>
   List.iter begin fun (x, y) ->
-    assert (log2sup x = y) ;
+    assert (ilog2sup x = y) ;
   end
 
 let test_table_pow base table =
   assert (table.(Array.length table - 1) = Stdlib.min_int) ;
   assert (does_overflow (fun () -> base *? table.(Array.length table - 2)))
 
-let test_log base =
-  assert (log ~base 0 = -1) ;
+let test_ilog base =
+  assert (ilog ~base 0 = -1) ;
   let again = ref true in
   let i = ref 0 in
   while !again do
@@ -2058,13 +2058,13 @@ let test_log base =
     | exception Overflow ->
         again := false
     | p ->
-        assert (log ~base (p-1) = !i-1) ;
-        assert (log ~base p = !i) ;
-        assert (log ~base (p+1) = if (base,!i) = (2,0) then 1 else !i) ;
+        assert (ilog ~base (p-1) = !i-1) ;
+        assert (ilog ~base p = !i) ;
+        assert (ilog ~base (p+1) = if (base,!i) = (2,0) then 1 else !i) ;
         incr i ;
     end
   done ;
-  let l = log ~base max_int in
+  let l = ilog ~base max_int in
   let p = pow base l in
   assert (p <= max_int) ;
   assert (does_overflow (fun () -> p *? base))
@@ -2078,11 +2078,11 @@ let () =
   test_table_pow 10 table_prev_pow10 ;
   test_table_pow 60 table_prev_pow60 ;
   for base = 2 to 20 do
-    test_log base
+    test_ilog base
   done ;
-  test_log 32 ;
-  test_log 64 ;
-  test_log 60 ;
+  test_ilog 32 ;
+  test_ilog 64 ;
+  test_ilog 60 ;
   ()
 
 let () =

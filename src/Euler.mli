@@ -277,7 +277,7 @@ module Arith : sig
       {b Complexity:} 𝒪(1). *)
   val powm1 : int -> int
 
-  (** [log ~base n] is the logarithm of [n] in base [base] rounded towards zero,
+  (** [ilog ~base n] is the logarithm of [n] in base [base] rounded towards zero,
       provided that [base] is at least 2 and that [n] is non‐negative.
       In other words, it returns ⌊ln([n])∕ln([base])⌋,
       This is the unique integer [k] such that [base]{^[k]} ≤ [n] < [base]{^[k]+1}.
@@ -286,27 +286,27 @@ module Arith : sig
       The default base is 10.
       {b Complexity:} 𝒪(log(log([n]))) integer multiplications.
       @return −1 when [n] = 0. *)
-  val log : ?base:int -> int -> int
+  val ilog : ?base:int -> int -> int
 
-  (** [log2 n] is equivalent to [log ~base:2 n] but faster.
+  (** [ilog2 n] is equivalent to [ilog ~base:2 n] but faster.
       @return −1 when [n] = 0. *)
-  val log2 : int -> int
+  val ilog2 : int -> int
 
-  (** [logsup ~base n] is the number of digits of [n] in base [base], provided
+  (** [ilogsup ~base n] is the number of digits of [n] in base [base], provided
       that [base] is at least 2 and that [n] is non‐negative.
       It is equal to ⌈ln([n]+1)∕ln([base])⌉
       and also (when [n] is not null) to ⌊ln([n])∕ln([base])⌋ + 1.
       This is the unique integer [k] such that [base]{^[k]−1} ≤ [n] < [base]{^[k]}.
-      As for {!log}, this is relatively slow
+      As for {!ilog}, this is relatively slow
       but it is fast for bases 2, 16, 64, 10 and 60.
       The default base is 10.
       {b Complexity:} 𝒪(log(log([n]))) integer multiplications.
       @return 0 when [n] = 0. *)
-  val logsup : ?base:int -> int -> int
+  val ilogsup : ?base:int -> int -> int
 
-  (** [log2sup n] is equivalent to [logsup ~base:2 n] but faster.
+  (** [ilog2sup n] is equivalent to [ilogsup ~base:2 n] but faster.
       @return 0 when [n] = 0. *)
-  val log2sup : int -> int
+  val ilog2sup : int -> int
 
   (** [is_pow ~base ~exp n] is true if and only if [n] = [base]{^[exp]}.
       When [exp] is omitted, [is_kth_pow ~base n] says whether [n] is some power
