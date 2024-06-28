@@ -1,4 +1,19 @@
 (executable
- (name gen-wheel)
- (modules gen-wheel)
- (flags -w -24))
+  (name gen-wheel)
+  (modules gen-wheel)
+  (flags -w -24))
+
+(executable
+  (name find-max-exp-coeff)
+  (modules find-max-exp-coeff)
+  (flags -w -24)
+)
+
+(executable
+  (name find-magic)
+  (modules find-magic)
+  (flags -w -24)
+  (ocamlopt_flags
+    (:standard -inline=5 -ccopt -Ofast)
+  )
+)

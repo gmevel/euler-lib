@@ -1,0 +1,49 @@
+(executable
+  (name bench-add-sub-mul-div)
+  (modules bench-add-sub-mul-div)
+  (libraries euler)
+  (flags -w -24)
+  (ocamlopt_flags
+    (:standard -inline=5 -ccopt -Ofast)
+  )
+)
+
+(executable
+  (name bench-micro-opt)
+  (modules bench-micro-opt)
+  (libraries euler)
+  (flags -w -24)
+  (ocamlopt_flags
+    (:standard -inline=5 -ccopt -Ofast)
+  )
+)
+
+(executable
+  (name bench-gcd)
+  (modules bench-gcd)
+  (libraries euler)
+  (flags -w -24)
+  (ocamlopt_flags
+    (:standard -inline=5 -ccopt -Ofast)
+  )
+)
+
+(executable
+  (name bench-sieves)
+  (modules bench-sieves)
+  (libraries euler)
+  (flags -w -24)
+  (ocamlopt_flags
+    (:standard -inline=5 -ccopt -Ofast)
+  )
+)
+
+; (executable
+;   (name bench-is_prime)
+;   (modules bench-is_prime)
+;   (libraries euler)
+;   (flags -w -24)
+;   (ocamlopt_flags
+;     (:standard -inline=5 -ccopt -Ofast)
+;   )
+; )

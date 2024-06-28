@@ -1,0 +1,103 @@
+(* compile and run with:
+ *
+ *     dune build
+ *     dune install
+ *     ocamlfind ocamlopt -package euler -linkpkg bench/bench-MYBENCH.ml && ./a.out
+ *
+ * OR:
+ *
+ * add a rule like this in file `bench/dune`,
+ *
+ *     (executable
+ *       (name bench-MYBENCH)
+ *       (modules bench-MYBENCH)
+ *       (libraries euler)
+ *       (flags -w -24)
+ *       (ocamlopt_flags
+ *         (:standard -inline=5 -ccopt -Ofast)
+ *       )
+ *     )
+ *
+ * then:
+ *
+ *     dune build bench && _build/default/bench/bench-MYBENCH.exe
+ *
+ *)
+
+(*
+ * ADD
+ *)
+
+let add1 _x _y =
+  assert false
+
+let add2 _x _y =
+  assert false
+
+let add3 _x _y =
+  assert false
+
+(*
+ * TESTS
+ *)
+
+let timed ?msg f x =
+  begin match msg with
+  | None -> ()
+  | Some msg -> Printf.printf "· %s %!" msg
+  end ;
+  Gc.compact () ;
+  let t0 = Sys.time () in
+  let y = f x in
+  Printf.printf "--- %.3g s\n%!" (Sys.time () -. t0) ;
+  y
+
+let pp_binary out ?(len=1) n =
+  assert (0 <= n) ;
+  let s = ref "" in
+  let n = ref n in
+  while !n <> 0 do
+    s := (if !n land 1 = 0 then "0" else "1") ^ !s ;
+    n := !n lsr 1 ;
+  done ;
+  let s = !s in
+  let pad = String.make (max 0 (len - String.length s)) '0' in
+  Printf.fprintf out "%s" (pad ^ s)
+
+let test ~rounds ~min ~max =
+  Gc.compact () ;
+  let data = Array.init rounds (fun _ -> Euler.Arith.rand ~min ~max ()) in
+  Printf.printf "  functional test...\n%!" ;
+  for i = 0 to rounds-2 do
+    let x1 = data.(i) in
+    let x2 = data.(i+1) in
+    let y1 = add1 x1 x2 in
+    let y2 = add2 x1 x2 in
+    let y3 = add3 x1 x2 in
+    assert (y1 = y2) ;
+    assert (y1 = y3) ;
+  done ;
+  Printf.printf "  performance test...\n%!" ;
+  timed ~msg:"add1" begin fun () ->
+    for i = 0 to rounds-2 do
+      let _y = add1 data.(i) data.(i+1) in ()
+    done
+  end () ;
+  timed ~msg:"add2" begin fun () ->
+    for i = 0 to rounds-2 do
+      let _y = add2 data.(i) data.(i+1) in ()
+    done
+  end () ;
+  timed ~msg:"add3" begin fun () ->
+    for i = 0 to rounds-2 do
+      let _y = add3 data.(i) data.(i+1) in ()
+    done
+  end () ;
+  ()
+
+let () =
+  Random.self_init () ;
+  Printf.printf "integers up to 10_000:\n%!" ;
+  test ~rounds:(1 lsl 22) ~min:1 ~max:10_000 ;
+  Printf.printf "integers with 62-bit magnitude:\n%!" ;
+  test ~rounds:(1 lsl 22) ~min:Euler.Arith.min_int ~max:max_int ;

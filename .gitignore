@@ -2,4 +2,4 @@ _build/
 _doc
 .merlin
 *.install
-bench/
+config/magic64_detailed_partial.txt
