@@ -355,23 +355,23 @@ fun nmax ~do_prime ->
 module Wheel
 : sig
   (* For the segmented prime sieve, the number of wheel turns per segment.
-   * Segments are intervals of cardinal [diameter]×[turns_per_segment]. *)
+   * Segments are intervals of cardinal [length_of_turn]×[turns_per_segment]. *)
   val turns_per_segment : int
   (* The cardinal of a turn. This is the product of all pre‐culled primes. *)
-  val diameter : int
+  val length_of_turn : int
   (* The number of elements in a turn which are not pre‐culled, i.e. those which
    * are coprime with all pre‐culled primes. *)
   val number_of_coprimes : int
   (* The number of small primes that are pre‐culled. *)
   val number_of_primes : int
   (* [iter_half_coprimes ~turns f] iterates on all numbers [n] between 0 and
-   * [diameter]×[turns] which are coprime with all pre‐culled primes.
+   * [length_of_turn]×[turns] which are coprime with all pre‐culled primes.
    * More exactly, it iterates on their “half” ([n]−1)∕2 ([n] is always odd).
    * This is so because our sieve does not store even numbers. *)
   val iter_half_coprimes : turns:int -> (int -> unit) -> unit
   (* [increment i] is the increment from the (i−1)^th to the i^th wheel’s
-   * coprime. The first increment is 2 in order to step from [diameter]−1 to
-   * [diameter]+1 (recall that the ring of coprime residues is symmetric). *)
+   * coprime. The first increment is 2 so as to step from [length_of_turn]−1 to
+   * [length_of_turn]+1 (recall that the ring of coprime residues is symmetric). *)
   val increment : int -> int
   (* [next_coprime_index i] is the successor of the wheel’s coprime’s index [i]
    * (these indexes range from 0 included to [number_of_coprimes] excluded). *)
@@ -402,7 +402,7 @@ end
 
   let number_of_primes   : int = Primes__data_wheel.number_of_primes
   let number_of_coprimes : int = Primes__data_wheel.number_of_coprimes
-  let diameter           : int = Primes__data_wheel.diameter
+  let length_of_turn     : int = Primes__data_wheel.length_of_turn
   let preculled_primes : int array = Primes__data_wheel.preculled_primes
   let last_preculled_prime : int = Primes__data_wheel.last_preculled_prime
 
@@ -441,7 +441,7 @@ end (* module Wheel *)
  * again. This is done in [gen_primes], see below.
  *)
 let segmented_eratosthenes_sieve =
-  let segm_cardinal = Wheel.diameter * Wheel.turns_per_segment in
+  let segm_cardinal = Wheel.length_of_turn * Wheel.turns_per_segment in
   (* To save space, we only store odd numbers, so that the actual array only
    * stores C∕2 booleans, where C is the cardinal of a segment.
    * Then, at step K, the “address” addr represents the number C×K + 2×addr + 1.

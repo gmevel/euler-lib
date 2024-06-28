@@ -24,14 +24,14 @@ let preculled_primes : int array =
 let number_of_primes : int = Array.length preculled_primes
 
 (* Their product. *)
-let diameter : int = Array.fold_left ( * ) 1 preculled_primes
+let length_of_turn : int = Array.fold_left ( * ) 1 preculled_primes
 
 (* Their Euler’s totient. *)
 let number_of_coprimes : int = Array.fold_left (fun phi p -> phi*(p-1)) 1 preculled_primes
 
 (* The numbers which are coprime with all pre‐culled primes. *)
 let coprimes : int array =
-  List.init diameter (fun n -> n)
+  List.init length_of_turn (fun n -> n)
   |> List.filter begin fun n ->
         Array.for_all (fun p -> n mod p <> 0) preculled_primes
       end
@@ -39,8 +39,8 @@ let coprimes : int array =
 
 (* The differences between successive coprime numbers, divided by 2.
  * Increments are small primes, we store them in a string to save space.
- * The first increment is 2 in order to step from [diameter]−1 to [diameter]+1
- * (recall that the ring of coprime residues is symmetric). *)
+ * The first increment is 2 so as to step from [length_of_turn]−1 to
+ * [length_of_turn]+1 (recall that the ring of coprime residues is symmetric). *)
 let half_increments : string =
   String.init number_of_coprimes begin fun i ->
     let inc =
@@ -61,6 +61,6 @@ let () =
   Printf.fprintf out "let last_preculled_prime = %u\n\n" preculled_primes.(number_of_primes-1) ;
   Printf.fprintf out "let number_of_primes = %u\n\n" number_of_primes ;
   Printf.fprintf out "let number_of_coprimes = %u\n\n" number_of_coprimes ;
-  Printf.fprintf out "let diameter = %u\n\n" diameter ;
+  Printf.fprintf out "let length_of_turn = %u\n\n" length_of_turn ;
   Printf.fprintf out "let half_increments = %S\n\n" half_increments ;
   close_out out
