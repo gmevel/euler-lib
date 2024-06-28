@@ -46,14 +46,18 @@ module Arith : sig
 
       All operations defined here act on overflowing integers. An overflowing
       integer is any native integer (type [int]) except [Stdlib.min_int].
-      Otherwise said, they are the integers whose absolute value is at most
-      [max_int] = 2{^[int_size]−1} − 1. This makes the range of overflowing
+      Otherwise said, it is an integer whose absolute value is at most
+      {!max_int} = 2{^[int_size]−1} − 1, implying that the minimum value is
+      {!min_int} = −{!max_int} = −2{^[int_size]−1} + 1 = [Stdlib.min_int]+1 (!).
+      This makes the range of overflowing
       integers symmetrical, so that computing the opposite [( ~- )] or the
       absolute value [abs] never overflows (the presence of an additional value
       2{^[int_size]−1} being arbitrarily interpreted as a negative value fits
       the modulo semantics of integers, but is alien to an overflowing
-      semantics). This allows to use [Stdlib.min_int] as a special value, for
-      example to signal that an overflow occurred. Here, we rather raise an
+      semantics).
+
+      Incidentally, this allows to use [Stdlib.min_int] as a special value, for
+      example to signal that an overflow occurred. However in this library we rather raise an
       exception for that purpose. All functions in this library may fail when
       given [Stdlib.min_int] where an overflowing integer was expected.
 
@@ -69,8 +73,24 @@ module Arith : sig
       division‐by‐zero differently than other preconditions; for that we raise
       [Division_by_zero], and signal it in this documentation.
 
-      As much as possible, time and space complexities are indicated. If absent,
-      constant time or constant space is implied.
+      As much as possible, time and space complexities are indicated (time
+      complexities are termed as a count of machine-arithmetic operations).
+      If absent, constant time or constant space is implied.
+
+      By opening it, this module can mostly be used as a drop-in replacement for
+      Stdlib arithmetic operations. This allows lightweight notations and avoids
+      accidental uses of overflow-unsafe Stdlib operations.
+      Beware of the following changes:
+
+      - {!min_int} has a different value (as explained);
+      - {!min}, {!max} and {!compare} are monomorphic functions for type [int],
+        instead of polymorphic functions;
+      - {!( ** )} is redefined as the {e integer} exponentation
+        (the floating-point exponentiation is available as {!( **. )});
+      - {!( / )} is restricted to an {e exact} division
+        (a possibly-rounded division is available as {!( // )},
+        which differs from [Stdlib.(/)] in that it does an Euclidean division);
+      - {!(mod)} is redefined as the {e Euclidean} remainder.
   *)
 
   (****************************************************************************)
