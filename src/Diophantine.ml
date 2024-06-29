@@ -7,7 +7,7 @@ let solve_congruence (a, b, m) =
   assert (m <> 0) ;
   let m = Arith.abs m in
   let (d, inv_a', _) = Arith.gcdext a m in
-  let (b', r) = Arith.ediv b d in
+  let (b', r) = Arith.sdiv b d in
   if r <> 0 then
     raise No_solution ;
   let m' = m / d in
@@ -23,19 +23,24 @@ let solve_2_congruences (a, m) (b, n) =
   let (d, u, _) = Arith.gcdext m n in
   (* the subtraction b−a cannot overflow because both a and b are non-negative
    * (residue modulo m and n, respectively): *)
-  let (c, r) = Arith.ediv (b - a) d in
+  let (c, r) = Arith.sdiv (b - a) d in
   if r <> 0 then
     raise No_solution ;
+  (* this multiplication can overflow, in which case we must signal it, because 
+   * our end result is not representable: *)
   let p = Arith.mul (m / d) n in
   (* a is already canonical modulo m, hence also modulo p: *)
   (*! let a = Arith.erem a p in !*)
-  (* Since |c| < max(m, n) ≤ p, the canonical form of c modulo p is c if c ≥ 0,
-   * otherwise it is c+p, hence we can avoid computing a division: *)
+  (* since |c| < max(m, n) ≤ p, the canonical form of c modulo p is c if c ≥ 0,
+   * otherwise it is c+p; hence we can avoid computing a division: *)
   (*! let c = Arith.erem c p in !*)
   let c = c + (p land (c asr Sys.int_size)) in
-  let u = Arith.erem u p in
-  (* since 0 ≤ m ≤ p, the canonical form of m modulo p is 0 if m = p, and
-   * m otherwise, hence we can avoid computing a division: *)
+  (* since |u| ≤ ½n/d < n ≤ p, the canonical form of u modulo p is u if u ≥ 0,
+   * otherwise it is u+p; hence we can avoid computing a division:*)
+  (*! let u = Arith.erem u p in !*)
+  let u = u + (p land (u asr Sys.int_size)) in
+  (* since 0 ≤ m ≤ p, the canonical form of m modulo p is m if m ≠ p,
+   * otherwise it is 0; hence we can avoid computing a division: *)
   (*! let m = Arith.erem m p in !*)
   if m <> p then
     let x = Modular.(add ~modulo:p a (mul ~modulo:p c @@ mul ~modulo:p u m)) in
