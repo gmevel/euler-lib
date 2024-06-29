@@ -329,7 +329,7 @@ module Arith : sig
   val ilog2sup : int -> int
 
   (** [is_pow ~base ~exp n] is true if and only if [n] = [base]{^[exp]}.
-      When [exp] is omitted, [is_kth_pow ~base n] says whether [n] is some power
+      When [exp] is omitted, [is_pow ~base n] says whether [n] is some power
       of [base].
       When [exp] is provided, it is equivalent to {!is_kth_pow}[ ~k:exp ~root:base n].
       The default base is 10. *)
@@ -398,7 +398,7 @@ module Arith : sig
 
   (** The positive greatest common divisor of a sequence of numbers.
       {b Complexity:} 𝒪({i n} × log({i m})) integer divisions
-      where {i n} is the length of the sequence and {i m} is its maximum element. *)
+      where {i n} is the length of the sequence and {i m} is its first element. *)
   val gcd_of_seq : int Seq.t -> int
 
   (** [gcdext a b] is the extended Euclidean algorithm; it returns [(d, u, v)]
@@ -429,7 +429,7 @@ module Arith : sig
       {i a{_1}×u{_1} + … + a{_n}×u{_n} = d}.
 
       {b Complexity:} 𝒪({i n} × log({i m})) integer divisions
-      where {i n} is the length of the sequence and {i m} is its maximum element.
+      where {i n} is the length of the sequence and {i m} is its first element.
 
       @raise Overflow when the computation of Bézout’s coefficients provokes
         an overflow, which may happen even if there exists a representable
@@ -444,7 +444,7 @@ module Arith : sig
 
   (** The lesser common multiple of a sequence of numbers.
       {b Complexity:} 𝒪({i n} × log({i m})) integer divisions
-      where {i n} is the length of the sequence and {i m} is its maximum element.
+      where {i n} is the length of the sequence and {i m} is its first element.
       @raise Overflow when the result overflows. *)
   val lcm_of_seq : int Seq.t -> int
 
@@ -816,14 +816,18 @@ module Diophantine : sig
   (** [solve_congruences @@ List.to_seq [ (a1, b1, m1) ; … ; (ak, bk, mk) ]],
       provided that the {i m{_i}} are non-zero, solves the following linear
       congruence system of unknown {i x}:
+
       - {i a{_1} · x ≡{_m{_1}} b{_1} }
       - {i … }
       - {i a{_k} · x ≡{_m{_k}} b{_k} }
 
-      {e TODO: complexity?}
+      {b Complexity:} time 𝒪({i k}×log(max({i m{_1}}, …, {i m{_k}}))),
+      space 𝒪(1).
+
       @return a pair [(x, m)] where 0 ≤ {i x} < {i m}, which represents the set
         of solutions {i x} + {i m}ℤ,
       @raise No_solution if there are no solutions.
+      @raise Overflow when the result overflows, that is, when {i m} overflows.
   *)
   val solve_congruences : (int * int * int) Seq.t -> int * int
 
